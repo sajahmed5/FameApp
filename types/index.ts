@@ -27,8 +27,28 @@ export type Profile = {
   points_balance: number;
   points_lifetime: number;
   search_radius_miles: number;
+  onboarding_complete: boolean;
   created_at: string;
   updated_at: string;
+};
+
+/** A tag row from `public.tags`. */
+export type Tag = {
+  id: string;
+  name: string;
+  usage_count: number;
+};
+
+/** A row returned by the `get_suggested_accounts` RPC. */
+export type SuggestedAccount = {
+  id: string;
+  handle: string;
+  display_name: string;
+  avatar_url: string | null;
+  is_private: boolean;
+  follower_count: number;
+  overlap: number;
+  follow_status: 'pending' | 'accepted' | null;
 };
 
 /** Identity fields captured during signup and stashed in auth user_metadata. */

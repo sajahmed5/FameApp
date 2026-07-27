@@ -20,9 +20,11 @@ import type { Profile, SignupIdentityMetadata } from '@/types';
  *   signedOut    — no session; go to (auth)
  *   unverified   — session but email not confirmed; go to verification
  *   needsProfile — verified but no profiles row (abandoned signup); resume identity
- *   ready        — verified + profile present; go to (tabs)
+ *   onboarding   — verified + profile, but onboarding not finished; run onboarding
+ *   ready        — verified + profile + onboarding complete; go to (tabs)
  */
-export type AuthStatus = 'loading' | 'signedOut' | 'unverified' | 'needsProfile' | 'ready';
+export type AuthStatus =
+  'loading' | 'signedOut' | 'unverified' | 'needsProfile' | 'onboarding' | 'ready';
 
 type AuthResult = { error: AuthError | null };
 
@@ -177,9 +179,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ? 'unverified'
         : profileLoading
           ? 'loading'
-          : profile
-            ? 'ready'
-            : 'needsProfile';
+          : !profile
+            ? 'needsProfile'
+            : profile.onboarding_complete
+              ? 'ready'
+              : 'onboarding';
 
   const value = useMemo<AuthContextValue>(
     () => ({

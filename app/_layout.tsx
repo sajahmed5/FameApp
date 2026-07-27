@@ -21,6 +21,7 @@ SplashScreen.preventAutoHideAsync();
  *   signedOut    → (auth)/login  (but signup screens under (auth) are left alone)
  *   unverified   → signup/verify
  *   needsProfile → signup/identity  (resume an abandoned signup)
+ *   onboarding   → (onboarding)/tags
  *   ready        → (tabs)
  */
 function useAuthGuard(status: AuthStatus) {
@@ -33,6 +34,7 @@ function useAuthGuard(status: AuthStatus) {
     const parts = segments as string[];
     const inAuth = parts[0] === '(auth)';
     const inSignup = inAuth && parts[1] === 'signup';
+    const inOnboarding = parts[0] === '(onboarding)';
     const signupStep = parts[2];
 
     if (status === 'signedOut') {
@@ -41,8 +43,10 @@ function useAuthGuard(status: AuthStatus) {
       if (!(inSignup && signupStep === 'verify')) router.replace('/(auth)/signup/verify');
     } else if (status === 'needsProfile') {
       if (!(inSignup && signupStep === 'identity')) router.replace('/(auth)/signup/identity');
+    } else if (status === 'onboarding') {
+      if (!inOnboarding) router.replace('/(onboarding)/tags');
     } else if (status === 'ready') {
-      if (inAuth) router.replace('/(tabs)');
+      if (inAuth || inOnboarding) router.replace('/(tabs)');
     }
   }, [status, segments, router]);
 }
@@ -61,6 +65,7 @@ function RootNavigator() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="(auth)" />
+      <Stack.Screen name="(onboarding)" />
       <Stack.Screen
         name="search"
         options={{ presentation: 'modal', headerShown: true, title: 'Search' }}

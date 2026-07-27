@@ -127,12 +127,30 @@ via column-level GRANTs: clients cannot set `moderation_status`, the `*_count`
 columns, or the points columns on INSERT or UPDATE — those are owned by triggers
 and moderation tooling. See `SECURITY-REVIEW.md` for the full self-audit.
 
-### Known limitation — client-side ledger inserts
+### Points are awarded server-side only
 
-Per the spec, `points_ledger` currently permits INSERT-own. That means a client
-could insert a row with an arbitrary `delta` and mint points. The anti-gaming
-rules in the product spec (dwell time, diminishing returns, daily ceilings) can't
-be expressed in an RLS `WITH CHECK`. **Before production**, move all ledger writes
-behind a `SECURITY DEFINER` "award points" function (or an Edge Function using
-`service_role`) and drop the client INSERT policy. This is called out again in
-`SECURITY-REVIEW.md`.
+Clients have **no** write access to `points_ledger` (INSERT/UPDATE/DELETE are all
+revoked). Points are granted exclusively through the `SECURITY DEFINER` gateway
+`public.award_points(reason, ref_type, ref_id)` (migration
+`…_points_award.sql`): the client submits only the *action*, and the server
+derives the delta from `points_for_reason()`. That function body is the single
+place the anti-gaming rules (dwell-time gate, per-hour diminishing returns, daily
+ceiling) will be enforced — they're stubbed with clear insertion points now.
+
+```ts
+// client — award the current user for their own action
+const { data: newBalance } = await supabase.rpc('award_points', {
+  _reason: 'comment',
+  _ref_type: 'comment',
+  _ref_id: commentId,
+});
+```
+
+Awardable `reason` values: `swipe` (1), `comment` (5), `comment_reply` (5),
+`comment_reaction` (2). Cross-user / admin awards (e.g. the +3 a post owner earns
+for *receiving* a comment — never a swipe) go through the internal, service-role
+only `_award_to()` helper.
+
+**Permanent rule:** no award path may ever write a swipe-referencing row into a
+*post owner's* ledger — that would leak swipe attribution (Rule 1). The reason
+whitelist has no swipe "received" entry by design.

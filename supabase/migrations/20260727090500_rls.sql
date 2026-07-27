@@ -283,19 +283,20 @@ create policy comment_reactions_delete on public.comment_reactions
   using (user_id = auth.uid());
 
 -- ---------------------------------------------------------------------------
--- 12. points_ledger — RULE 2. SELECT own + INSERT own ONLY. No update/delete
---     policy, and update/delete revoked for defense in depth.
---     (See README "Known limitation": client INSERT should move behind a
---     SECURITY DEFINER award function before production so points can't be
---     minted arbitrarily.)
+-- 12. points_ledger — RULE 2. SELECT own ONLY. The ledger is append-only AND
+--     write-only through the server: clients cannot INSERT / UPDATE / DELETE it
+--     directly (all three revoked, and no write policy exists). Points are
+--     awarded exclusively through the SECURITY DEFINER public.award_points()
+--     gateway (migration 6), which decides the delta server-side. This closes
+--     the point-minting hole a client INSERT policy would otherwise leave open.
 -- ---------------------------------------------------------------------------
 create policy ledger_select_own on public.points_ledger
   for select to authenticated using (user_id = auth.uid());
 
-create policy ledger_insert_own on public.points_ledger
-  for insert to authenticated with check (user_id = auth.uid());
-
-revoke update, delete on public.points_ledger from anon, authenticated;
+-- No INSERT/UPDATE/DELETE policy for clients, and the privileges are revoked so
+-- that even a future stray policy cannot grant write access. All writes go
+-- through award_points() (runs as owner) or service_role.
+revoke insert, update, delete on public.points_ledger from anon, authenticated;
 
 -- ---------------------------------------------------------------------------
 -- 13. reports — insert your own (always 'open'); read your own only.

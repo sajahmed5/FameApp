@@ -95,26 +95,37 @@ UPDATE are column-scoped on `profiles`, `posts`, `follows`, `comments`, `tags`:
 
 ---
 
-## Two things to decide before production
+## Resolved
 
-1. **Ledger minting (spec-flagged, high priority).** Per the spec, the ledger
-   currently permits INSERT-own, so a client can insert an arbitrary positive
-   `delta` and mint points. The anti-gaming rules (dwell time, diminishing
-   returns, daily ceilings) cannot be expressed in an RLS `WITH CHECK`. Move all
-   ledger writes behind a `SECURITY DEFINER` award function (or an Edge Function
-   using `service_role`) that enforces those rules, and **drop
-   `ledger_insert_own`**. This does not affect Rule 2 (no mutation is possible
-   either way) — it's an integrity, not an anonymity, issue.
+1. **Ledger minting — FIXED.** The client INSERT policy on `points_ledger` was
+   removed and INSERT/UPDATE/DELETE are revoked from `anon`/`authenticated`.
+   Points are now awarded only through the `SECURITY DEFINER`
+   `public.award_points()` gateway (migration `…_points_award.sql`): the client
+   submits the action, the server decides the delta via `points_for_reason()`,
+   and the anti-gaming rules (dwell time, diminishing returns, daily caps) have
+   explicit stubbed insertion points inside that function. A client can no longer
+   write the ledger at all, so arbitrary deltas can't be minted.
 
-2. **Interpretation to confirm — `profiles` + blocks.** The spec says profiles are
-   "readable by all" and, separately, that a blocked user's *content* must be
-   hidden both ways. I resolved the tension on the side of safety:
-   `profiles_select` hides profiles between blocked pairs. If you truly want a
-   blocked user to still see the blocker's profile row, change `profiles_select`'s
-   `using` to `true`. (Posts/comments block-filtering is unaffected either way.)
-   Relatedly, private posts also require `moderation_status <> 'removed'` so a
-   removed post is never served to followers — a small safety add-on beyond the
-   literal "readable by accepted followers".
+2. **Blocked-pair profiles — CONFIRMED (kept the safer behaviour).**
+   `profiles_select` hides profiles between blocked pairs both ways, as requested.
+   Posts/comments block-filtering matches. Private posts additionally require
+   `moderation_status <> 'removed'` so a removed post is never served to
+   followers.
+
+## Swipe-in-owner-ledger invariant — audited, holds
+
+Confirmed there is **no ledger row that references a swipe in a post owner's
+ledger**, and no code path that could create one:
+
+- **Seed:** every `points_ledger` insert uses `reason = 'seed_activity'`,
+  `ref_type = 'seed'`, `ref_id = NULL`, and `user_id = <that same user>`. No
+  swipe reference, no cross-user credit.
+- **Triggers:** no trigger writes to `points_ledger` from `swipes` (the swipe
+  trigger only updates `posts.like_count`/`skip_count`).
+- **Award gateway:** `award_points` credits `auth.uid()` only (the actor). Its
+  reason whitelist has no swipe "received" entry, and the internal `_award_to`
+  helper is service-role only. Documented as a permanent invariant in the
+  migration header so it survives future changes.
 
 ---
 

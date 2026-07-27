@@ -41,7 +41,8 @@ drop policy if exists comments_delete on public.comments;
 drop policy if exists comment_reactions_select on public.comment_reactions;
 drop policy if exists comment_reactions_insert on public.comment_reactions;
 drop policy if exists comment_reactions_delete on public.comment_reactions;
--- points_ledger
+-- points_ledger  (ledger_insert_own was removed in favour of award_points;
+-- the drop is kept as if-exists in case an older revision applied it)
 drop policy if exists ledger_select_own on public.points_ledger;
 drop policy if exists ledger_insert_own on public.points_ledger;
 -- reports
@@ -59,7 +60,7 @@ grant update, delete on public.tags      to authenticated;
 grant update          on public.follows  to authenticated;
 grant update          on public.swipes   to authenticated;
 grant update          on public.comments to authenticated;
-grant update, delete on public.points_ledger to authenticated;
+grant insert, update, delete on public.points_ledger to authenticated;
 grant update, delete on public.reports   to authenticated;
 
 -- Helper functions.

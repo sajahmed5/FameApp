@@ -1,0 +1,12 @@
+-- Rollback for 20260727090100_extensions
+--
+-- Intentionally does NOT drop postgis / pgcrypto. These extensions are shared
+-- infrastructure and are frequently relied on by other objects, Supabase
+-- internals, and the dashboard. Dropping them can cascade-break unrelated
+-- things. If you genuinely want them gone on a throwaway database, run manually:
+--
+--   drop extension if exists postgis  cascade;
+--   drop extension if exists pgcrypto cascade;
+--
+-- (No-op by default.)
+select 1;

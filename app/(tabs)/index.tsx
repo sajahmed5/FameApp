@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DeckError, DeckExhausted, DeckSkeleton } from '@/components/deck/deck-states';
@@ -25,7 +25,7 @@ export default function HomeScreen() {
     body = (
       <View style={styles.deckArea}>
         <SwipeDeck cards={cards} onSwipe={swipe} onShare={onShare} />
-        <View style={[styles.controls, { bottom: insets.bottom + 12 }]}>
+        <View style={styles.controls}>
           <UndoButton disabled={!canUndo} onPress={undo} />
         </View>
         {pendingWrites > 0 ? <PendingPill count={pendingWrites} top={insets.top + 8} /> : null}
@@ -44,7 +44,6 @@ export default function HomeScreen() {
 }
 
 function UndoButton({ disabled, onPress }: { disabled: boolean; onPress: () => void }) {
-  const theme = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
@@ -52,15 +51,8 @@ function UndoButton({ disabled, onPress }: { disabled: boolean; onPress: () => v
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.undo,
-        {
-          backgroundColor: theme.background,
-          borderColor: theme.border,
-          opacity: disabled ? 0.4 : pressed ? 0.8 : 1,
-        },
-      ]}>
-      <Ionicons name="arrow-undo" size={24} color={theme.text} />
+      style={({ pressed }) => [styles.undo, { opacity: disabled ? 0.35 : pressed ? 0.7 : 1 }]}>
+      <Ionicons name="arrow-undo" size={20} color="#fff" />
     </Pressable>
   );
 }
@@ -80,30 +72,22 @@ function PendingPill({ count, top }: { count: number; top: number }) {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   deckArea: { flex: 1, padding: 10 },
+  // Grouped with the on-media action buttons: sits just below the comment icon,
+  // top-right — clear of the caption (bottom-left) and the centre Camera tab.
   controls: {
     position: 'absolute',
-    left: 20,
-    // Kept to the left so it never collides with the centre Camera tab button.
-    alignItems: 'flex-start',
+    top: 186,
+    right: 22,
+    alignItems: 'center',
     pointerEvents: 'box-none',
   },
   undo: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 1,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    ...Platform.select({
-      web: { boxShadow: '0px 3px 8px rgba(0,0,0,0.15)' },
-      default: {
-        shadowColor: '#000',
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 3 },
-        elevation: 4,
-      },
-    }),
+    backgroundColor: 'rgba(0,0,0,0.4)',
   },
   pending: {
     position: 'absolute',

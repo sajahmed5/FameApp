@@ -2,12 +2,38 @@
  * Shared application types.
  *
  * The generated Supabase schema types (`supabase gen types typescript ...`) will live
- * alongside this file later. For the scaffold we only declare the shape of the values
- * we inject through `app.config.ts` -> `Constants.expoConfig.extra`.
+ * alongside this file later. For now we hand-declare the few shapes the app needs.
  */
 
 /** Values passed from `app.config.ts` into the runtime via `expo-constants`. */
 export type AppExtra = {
   supabaseUrl?: string;
   supabaseAnonKey?: string;
+};
+
+/** Coarse age band derived server-side from date of birth. */
+export type AgeBand = 'minor' | 'adult';
+
+/** A row of `public.profiles`. */
+export type Profile = {
+  id: string;
+  handle: string;
+  display_name: string;
+  bio: string | null;
+  avatar_url: string | null;
+  date_of_birth: string; // ISO `YYYY-MM-DD`
+  is_private: boolean;
+  age_band: AgeBand;
+  points_balance: number;
+  points_lifetime: number;
+  search_radius_miles: number;
+  created_at: string;
+  updated_at: string;
+};
+
+/** Identity fields captured during signup and stashed in auth user_metadata. */
+export type SignupIdentityMetadata = {
+  display_name: string;
+  handle: string;
+  date_of_birth: string; // ISO `YYYY-MM-DD`
 };

@@ -1,9 +1,9 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import 'react-native-url-polyfill/auto';
 
+import { secureStoreAdapter } from '@/lib/secure-store-adapter';
 import type { AppExtra } from '@/types';
 
 const extra = (Constants.expoConfig?.extra ?? {}) as AppExtra;
@@ -20,15 +20,31 @@ if (!supabaseUrl || !supabaseAnonKey) {
 /**
  * Shared Supabase client.
  *
- * On native, sessions persist through AsyncStorage. On web, supabase-js defaults to
- * `localStorage`, so we leave `storage` undefined there. `detectSessionInUrl` is only
- * relevant on web (OAuth / magic-link redirects).
+ * Native sessions persist in the OS secure store (Keychain / Keystore) via
+ * `secureStoreAdapter` — never AsyncStorage. On web there is no SecureStore, so we leave
+ * `storage` undefined and supabase-js falls back to localStorage. `detectSessionInUrl`
+ * only matters on web (magic-link / reset redirects land back in the browser).
  */
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage: Platform.OS === 'web' ? undefined : AsyncStorage,
+    storage: Platform.OS === 'web' ? undefined : secureStoreAdapter,
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: Platform.OS === 'web',
   },
 });
+
+/**
+ * Refresh the access token only while the app is foregrounded. supabase-js recommends
+ * pausing the refresh timer in the background to avoid unnecessary work and races.
+ * Native only — on web the tab lifecycle handles this.
+ */
+if (Platform.OS !== 'web') {
+  AppState.addEventListener('change', (state) => {
+    if (state === 'active') {
+      supabase.auth.startAutoRefresh();
+    } else {
+      supabase.auth.stopAutoRefresh();
+    }
+  });
+}

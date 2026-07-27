@@ -1,0 +1,233 @@
+import * as Linking from 'expo-linking';
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+
+import { DateOfBirthField } from '@/components/date-of-birth-field';
+import { AuthScreen } from '@/components/ui/auth-screen';
+import { Button } from '@/components/ui/button';
+import { FormMessage } from '@/components/ui/form-message';
+import { TextField } from '@/components/ui/text-field';
+import { useAuth } from '@/lib/auth-context';
+import { useSignup } from '@/lib/signup-context';
+import { supabase } from '@/lib/supabase';
+import { useTheme } from '@/hooks/use-theme';
+import { dobStatus, toIsoDate, validateDisplayName, validateHandleFormat } from '@/lib/validation';
+import type { SignupIdentityMetadata } from '@/types';
+
+type Availability = 'idle' | 'invalid' | 'checking' | 'available' | 'taken' | 'error';
+/** Result of a completed availability check, tied to the handle it was run for. */
+type CheckResult = { handle: string; result: 'available' | 'taken' | 'error' };
+
+const HANDLE_DEBOUNCE_MS = 450;
+const TODAY = new Date();
+
+export default function SignupIdentityScreen() {
+  const router = useRouter();
+  const { draft, update, reset } = useSignup();
+  const { session, reload } = useAuth();
+
+  // Resume mode: the user is already authenticated (verified) but has no profile row.
+  const isResume = !!session;
+  const metadata = session?.user?.user_metadata as Partial<SignupIdentityMetadata> | undefined;
+
+  const [displayName, setDisplayName] = useState(draft.displayName || metadata?.display_name || '');
+  const [handle, setHandle] = useState(draft.handle || metadata?.handle || '');
+  const [dob, setDob] = useState<Date | null>(
+    draft.dateOfBirth
+      ? new Date(`${draft.dateOfBirth}T00:00:00`)
+      : metadata?.date_of_birth
+        ? new Date(`${metadata.date_of_birth}T00:00:00`)
+        : null,
+  );
+
+  const [touched, setTouched] = useState<{ name?: boolean; handle?: boolean; dob?: boolean }>({});
+  const [checkResult, setCheckResult] = useState<CheckResult | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  // Debounced live handle availability against profiles.handle (anon-callable RPC).
+  // Only the async result is stored; the synchronous states below are derived.
+  useEffect(() => {
+    if (!handle || validateHandleFormat(handle)) return;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      const { data, error } = await supabase.rpc('is_handle_available', { _handle: handle });
+      if (cancelled) return;
+      setCheckResult({ handle, result: error ? 'error' : data ? 'available' : 'taken' });
+    }, HANDLE_DEBOUNCE_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [handle]);
+
+  const availability: Availability = !handle
+    ? 'idle'
+    : validateHandleFormat(handle)
+      ? 'invalid'
+      : checkResult?.handle === handle
+        ? checkResult.result
+        : 'checking';
+
+  const nameError = touched.name ? validateDisplayName(displayName) : null;
+  const dobState = dob ? dobStatus(dob) : null;
+  const dobError = touched.dob
+    ? !dob
+      ? 'Enter your date of birth.'
+      : dobState === 'under13'
+        ? 'You must be at least 13 to use Fame.'
+        : null
+    : null;
+
+  const handleError =
+    touched.handle && availability === 'invalid'
+      ? validateHandleFormat(handle)
+      : availability === 'taken'
+        ? 'That handle is taken.'
+        : availability === 'error'
+          ? "Couldn't check that handle. Try again."
+          : null;
+
+  const canSubmit =
+    !validateDisplayName(displayName) &&
+    availability === 'available' &&
+    !!dob &&
+    dobState !== 'under13';
+
+  async function onSubmit() {
+    setTouched({ name: true, handle: true, dob: true });
+    setFormError(null);
+    if (!canSubmit || !dob) return;
+
+    const isoDob = toIsoDate(dob);
+    const isPrivate = dobStatus(dob) === 'minor';
+
+    setSubmitting(true);
+    try {
+      if (isResume && session) {
+        // Verified but profile missing → create it directly (handle may have changed).
+        const { error } = await supabase.from('profiles').insert({
+          id: session.user.id,
+          handle,
+          display_name: displayName.trim(),
+          date_of_birth: isoDob,
+          is_private: isPrivate,
+        });
+        if (error) {
+          if (error.code === '23505') setCheckResult({ handle, result: 'taken' });
+          else setFormError(error.message);
+          return;
+        }
+        reset();
+        reload(); // auth context re-resolves the profile → routes to tabs
+        return;
+      }
+
+      // Fresh signup: NOW create the auth user (after the under-13 gate), carrying the
+      // identity in user_metadata so the profile can be created on verification.
+      update({ displayName: displayName.trim(), handle, dateOfBirth: isoDob });
+      const { error } = await supabase.auth.signUp({
+        email: draft.email,
+        password: draft.password,
+        options: {
+          emailRedirectTo: Linking.createURL('/'),
+          data: {
+            display_name: displayName.trim(),
+            handle,
+            date_of_birth: isoDob,
+          } satisfies SignupIdentityMetadata,
+        },
+      });
+      if (error) {
+        if (error.message.toLowerCase().includes('already registered')) {
+          setFormError('An account already exists for this email. Try logging in instead.');
+        } else {
+          setFormError(error.message);
+        }
+        return;
+      }
+      router.replace('/(auth)/signup/verify');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <AuthScreen
+      title={isResume ? 'Finish setting up' : 'Tell us about you'}
+      subtitle={isResume ? 'Pick a handle to finish your profile.' : 'Step 2 of 3 — your identity.'}
+      onBack={isResume ? undefined : () => router.back()}
+      footer={
+        <Button
+          title={isResume ? 'Finish setup' : 'Create account'}
+          onPress={onSubmit}
+          loading={submitting}
+        />
+      }>
+      {formError ? <FormMessage tone="error">{formError}</FormMessage> : null}
+
+      <TextField
+        label="Display name"
+        value={displayName}
+        onChangeText={setDisplayName}
+        onBlur={() => setTouched((t) => ({ ...t, name: true }))}
+        error={nameError}
+        autoCapitalize="words"
+        placeholder="Your name"
+        maxLength={50}
+      />
+
+      <TextField
+        label="Handle"
+        value={handle}
+        onChangeText={(v) => setHandle(v.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+        onBlur={() => setTouched((t) => ({ ...t, handle: true }))}
+        error={handleError}
+        hint={
+          availability === 'available'
+            ? 'Available'
+            : '3–30 characters: lowercase letters, numbers, underscore.'
+        }
+        autoCapitalize="none"
+        autoCorrect={false}
+        placeholder="yourhandle"
+        maxLength={30}
+        accessoryRight={<HandleStatus availability={availability} />}
+      />
+
+      <DateOfBirthField
+        label="Date of birth"
+        value={dob}
+        onChange={setDob}
+        onBlur={() => setTouched((t) => ({ ...t, dob: true }))}
+        error={dobError}
+        hint="You can't change this later."
+        maximumDate={TODAY}
+      />
+
+      {dobState === 'under13' ? (
+        <FormMessage tone="error">
+          You need to be at least 13 years old to create a Fame account.
+        </FormMessage>
+      ) : dobState === 'minor' ? (
+        <FormMessage tone="info">
+          Because you are under 18, your account will be private by default. You can review this in
+          settings later.
+        </FormMessage>
+      ) : null}
+    </AuthScreen>
+  );
+}
+
+function HandleStatus({ availability }: { availability: Availability }) {
+  const theme = useTheme();
+  if (availability === 'checking')
+    return <ActivityIndicator size="small" color={theme.textSecondary} />;
+  if (availability === 'available')
+    return <Ionicons name="checkmark-circle" size={22} color={theme.success} />;
+  if (availability === 'taken' || availability === 'invalid')
+    return <Ionicons name="close-circle" size={22} color={theme.danger} />;
+  return null;
+}

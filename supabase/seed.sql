@@ -84,6 +84,13 @@ cross join lateral (
   select id from public.profiles where handle like 'user%' order by random() limit 1
 ) as author;
 
+-- 5b. Give the video-typed posts a real, short, publicly-hosted sample clip so the
+--     deck's video path is testable (the picsum URLs above are images). Thumbnail
+--     stays a picsum image, acting as the poster frame.
+update public.posts
+set media_url = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'
+where media_type = 'video' and caption like 'Seed post #%';
+
 -- 6. 1-3 tags per post (fires tags.usage_count trigger).
 insert into public.post_tags (post_id, tag_id, source)
 select p.id, t.id, 'user'

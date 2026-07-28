@@ -338,6 +338,7 @@ export type NotificationPrefs = {
   comments: boolean;
   reactions: boolean;
   reach: boolean;
+  messages: boolean;
 };
 const DEFAULT_PREFS: NotificationPrefs = {
   follows: true,
@@ -345,6 +346,7 @@ const DEFAULT_PREFS: NotificationPrefs = {
   comments: true,
   reactions: true,
   reach: true,
+  messages: true,
 };
 
 export async function getNotificationPrefs(): Promise<NotificationPrefs> {

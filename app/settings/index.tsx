@@ -197,6 +197,11 @@ export default function SettingsScreen() {
                 value={prefs.reach}
                 onValueChange={(v) => togglePref('reach', v)}
               />
+              <ToggleRow
+                label="Messages"
+                value={prefs.messages}
+                onValueChange={(v) => togglePref('messages', v)}
+              />
             </>
           )}
         </Group>

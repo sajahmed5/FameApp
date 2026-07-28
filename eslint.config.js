@@ -9,6 +9,8 @@ module.exports = defineConfig([
   expoConfig,
   prettier,
   {
-    ignores: ['dist/*', '.expo/*', 'node_modules/*', 'expo-env.d.ts'],
+    // supabase/functions + scripts are Deno (Deno.serve, npm: specifiers) — linted
+    // by `deno lint`, not the RN/Expo ESLint config.
+    ignores: ['dist/*', '.expo/*', 'node_modules/*', 'expo-env.d.ts', 'supabase/functions/**', 'scripts/**'],
   },
 ]);

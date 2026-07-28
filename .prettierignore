@@ -5,3 +5,7 @@ web-build/
 android/
 ios/
 package-lock.json
+
+# Deno edge functions + scripts (formatted by deno fmt, not prettier)
+supabase/functions/
+scripts/

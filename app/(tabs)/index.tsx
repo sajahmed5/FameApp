@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CommentSheet } from '@/components/comments/comment-sheet';
@@ -34,10 +34,9 @@ export default function HomeScreen() {
           onSwipe={swipe}
           onShare={onShare}
           onOpenComments={onOpenComments}
+          canUndo={canUndo}
+          onUndo={undo}
         />
-        <View style={styles.controls}>
-          <UndoButton disabled={!canUndo} onPress={undo} />
-        </View>
         {pendingWrites > 0 ? <PendingPill count={pendingWrites} top={insets.top + 8} /> : null}
       </View>
     );
@@ -64,20 +63,6 @@ export default function HomeScreen() {
   );
 }
 
-function UndoButton({ disabled, onPress }: { disabled: boolean; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Undo last swipe"
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => [styles.undo, { opacity: disabled ? 0.35 : pressed ? 0.7 : 1 }]}>
-      <Ionicons name="arrow-undo" size={20} color="#fff" />
-    </Pressable>
-  );
-}
-
 function PendingPill({ count, top }: { count: number; top: number }) {
   const theme = useTheme();
   return (
@@ -93,23 +78,6 @@ function PendingPill({ count, top }: { count: number; top: number }) {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   deckArea: { flex: 1, padding: 10 },
-  // Grouped with the on-media action buttons: sits just below the comment icon,
-  // top-right — clear of the caption (bottom-left) and the centre Camera tab.
-  controls: {
-    position: 'absolute',
-    top: 186,
-    right: 22,
-    alignItems: 'center',
-    pointerEvents: 'box-none',
-  },
-  undo: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
   pending: {
     position: 'absolute',
     alignSelf: 'center',

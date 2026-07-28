@@ -15,10 +15,14 @@ export const SwipeCard = memo(function SwipeCard({
   card,
   isActive,
   onOpenComments,
+  canUndo,
+  onUndo,
 }: {
   card: DeckCard;
   isActive: boolean;
   onOpenComments?: () => void;
+  canUndo?: boolean;
+  onUndo?: () => void;
 }) {
   return (
     <View style={styles.card}>
@@ -40,6 +44,21 @@ export const SwipeCard = memo(function SwipeCard({
             {card.comment_count}
           </ThemedText>
         </Pressable>
+        {onUndo ? (
+          <Pressable
+            onPress={onUndo}
+            disabled={!canUndo}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Undo last swipe"
+            accessibilityState={{ disabled: !canUndo }}
+            style={({ pressed }) => [
+              styles.actionButton,
+              { opacity: canUndo ? (pressed ? 0.6 : 1) : 0.35 },
+            ]}>
+            <Ionicons name="arrow-undo" size={20} color="#fff" />
+          </Pressable>
+        ) : null}
       </View>
 
       {/* Bottom scrim + poster identity + caption. */}
@@ -121,6 +140,7 @@ const styles = StyleSheet.create({
   },
   stat: { alignItems: 'center', gap: 2 },
   commentButton: { alignItems: 'center', gap: 2, marginTop: 4 },
+  actionButton: { alignItems: 'center', marginTop: 4 },
   statText: { color: '#fff', fontWeight: '700', ...textShadow },
   bottomScrim: {
     position: 'absolute',

@@ -28,6 +28,8 @@ type SwipeDeckProps = {
   onSwipe: (direction: SwipeDirection) => void;
   onShare: (card: DeckCard) => void;
   onOpenComments: (card: DeckCard) => void;
+  canUndo: boolean;
+  onUndo: () => void;
 };
 
 /**
@@ -36,7 +38,14 @@ type SwipeDeckProps = {
  * it springs back. Swipe up opens share and springs back (does not consume the card).
  * All per-frame work is in worklets on the UI thread — no JS-thread work during a drag.
  */
-export function SwipeDeck({ cards, onSwipe, onShare, onOpenComments }: SwipeDeckProps) {
+export function SwipeDeck({
+  cards,
+  onSwipe,
+  onShare,
+  onOpenComments,
+  canUndo,
+  onUndo,
+}: SwipeDeckProps) {
   const { width, height } = useWindowDimensions();
   // Drag magnitude of the top card (0..1), read by the card beneath to scale up.
   const topProgress = useSharedValue(0);
@@ -64,6 +73,8 @@ export function SwipeDeck({ cards, onSwipe, onShare, onOpenComments }: SwipeDeck
           onSwipe={handleSwipe}
           onShare={onShare}
           onOpenComments={onOpenComments}
+          canUndo={canUndo}
+          onUndo={onUndo}
         />
       ) : null}
       {visible[0] ? (
@@ -77,6 +88,8 @@ export function SwipeDeck({ cards, onSwipe, onShare, onOpenComments }: SwipeDeck
           onSwipe={handleSwipe}
           onShare={onShare}
           onOpenComments={onOpenComments}
+          canUndo={canUndo}
+          onUndo={onUndo}
         />
       ) : null}
     </View>
@@ -92,6 +105,8 @@ type DeckCardViewProps = {
   onSwipe: (direction: SwipeDirection) => void;
   onShare: (card: DeckCard) => void;
   onOpenComments: (card: DeckCard) => void;
+  canUndo: boolean;
+  onUndo: () => void;
 };
 
 function DeckCardView({
@@ -103,6 +118,8 @@ function DeckCardView({
   onSwipe,
   onShare,
   onOpenComments,
+  canUndo,
+  onUndo,
 }: DeckCardViewProps) {
   const x = useSharedValue(0);
   const y = useSharedValue(0);
@@ -176,6 +193,8 @@ function DeckCardView({
         card={card}
         isActive={isTop}
         onOpenComments={isTop ? () => onOpenComments(card) : undefined}
+        canUndo={isTop ? canUndo : undefined}
+        onUndo={isTop ? onUndo : undefined}
       />
       {isTop ? (
         <>

@@ -69,10 +69,12 @@ function RootNavigator() {
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(onboarding)" />
-      <Stack.Screen
-        name="search"
-        options={{ presentation: 'modal', headerShown: true, title: 'Search' }}
-      />
+      {/* A regular pushed screen, NOT a modal: screens opened from Search (a
+          profile, the seeded deck, a tag page) set their own headers, and
+          changing a header's visibility on a screen presented within a modal
+          remounts it — which caused an infinite reload loop when opening a
+          profile from search. A card push avoids that entirely. */}
+      <Stack.Screen name="search" options={{ headerShown: true, title: 'Search' }} />
       <Stack.Screen
         name="compose"
         options={{ presentation: 'modal', headerShown: true, title: 'New post' }}

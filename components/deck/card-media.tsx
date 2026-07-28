@@ -68,7 +68,7 @@ function CardVideo({ card, isActive }: { card: DeckCard; isActive: boolean }) {
   }
 
   return (
-    <Pressable style={StyleSheet.absoluteFill} onPress={toggleMute}>
+    <View style={StyleSheet.absoluteFill}>
       {/* Poster frame under the video so there's no black flash before it loads. */}
       <Image
         source={{ uri: card.thumbnail_url }}
@@ -76,18 +76,29 @@ function CardVideo({ card, isActive }: { card: DeckCard; isActive: boolean }) {
         contentFit="cover"
         recyclingKey={card.id}
       />
+      {/* pointerEvents="none": VideoView is a native view that otherwise swallows
+          touches at the native layer — above the JS overlay — so the like/skip/comment
+          controls stopped responding on video cards. Making it transparent to touches
+          lets the overlay controls (and the mute button below) receive taps. This is
+          the fix for the "controls dead on video cards" bug, not moving the overlay. */}
       <VideoView
         player={player}
         style={StyleSheet.absoluteFill}
         contentFit="cover"
         nativeControls={false}
+        pointerEvents="none"
       />
-      {muted ? (
-        <View style={styles.muteBadge}>
-          <Ionicons name="volume-mute" size={16} color="#fff" />
-        </View>
-      ) : null}
-    </Pressable>
+      {/* Mute is now a discrete button rather than a tap-anywhere target, so it no
+          longer competes with double-tap-to-like or the card's other tap targets. */}
+      <Pressable
+        onPress={toggleMute}
+        hitSlop={10}
+        accessibilityRole="button"
+        accessibilityLabel={muted ? 'Unmute video' : 'Mute video'}
+        style={({ pressed }) => [styles.muteBadge, pressed && { opacity: 0.7 }]}>
+        <Ionicons name={muted ? 'volume-mute' : 'volume-high'} size={16} color="#fff" />
+      </Pressable>
+    </View>
   );
 }
 

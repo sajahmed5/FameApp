@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -41,6 +42,7 @@ export function DeckView({ fetchBatch, header, renderEmpty }: DeckViewProps) {
   const { cards, status, canUndo, pendingWrites, swipe, undo, retry, adjustCommentCount } =
     useDeck(fetchBatch);
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   const [commentsCard, setCommentsCard] = useState<DeckCard | null>(null);
 
@@ -48,6 +50,16 @@ export function DeckView({ fetchBatch, header, renderEmpty }: DeckViewProps) {
     void shareCard(card);
   }, []);
   const onOpenComments = useCallback((card: DeckCard) => setCommentsCard(card), []);
+  // Reuse the existing public profile screen — don't build a new one.
+  const onOpenProfile = useCallback(
+    (handle: string) => router.push({ pathname: '/u/[handle]', params: { handle } }),
+    [router],
+  );
+  // Open Search pre-filled with the tag and the Tags filter active.
+  const onOpenTag = useCallback(
+    (tag: string) => router.push({ pathname: '/search', params: { tag, mode: 'tags' } }),
+    [router],
+  );
 
   let body: React.ReactNode;
   if (cards.length > 0) {
@@ -58,6 +70,8 @@ export function DeckView({ fetchBatch, header, renderEmpty }: DeckViewProps) {
           onSwipe={swipe}
           onShare={onShare}
           onOpenComments={onOpenComments}
+          onOpenProfile={onOpenProfile}
+          onOpenTag={onOpenTag}
           canUndo={canUndo}
           onUndo={undo}
         />

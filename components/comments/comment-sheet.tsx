@@ -105,8 +105,12 @@ export function CommentSheet({
 
   // --- action handlers -------------------------------------------------------
   const openProfile = useCallback(
-    (handle: string) => router.push({ pathname: '/u/[handle]', params: { handle } }),
-    [router],
+    (handle: string) => {
+      // Open the profile and close the sheet behind it (animated dismiss → onClose).
+      router.push({ pathname: '/u/[handle]', params: { handle } });
+      dismiss();
+    },
+    [router, dismiss],
   );
 
   const onMore = useCallback((comment: CommentView) => setMoreTarget(comment), []);

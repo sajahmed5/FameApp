@@ -23,6 +23,13 @@ export type SwipeDirection = 'left' | 'right';
 
 export const DECK_BATCH_SIZE = 20;
 
+/**
+ * A batch fetcher shared by both feeds. Takes the exclude list of ids already loaded
+ * into the client deck; returns the next candidate batch. Home and Following pass
+ * different implementations so `useDeck` stays feed-agnostic.
+ */
+export type FetchBatch = (exclude: string[], limit?: number) => Promise<DeckCard[]>;
+
 /** Fetch a ranked batch, excluding posts already loaded into the client deck. */
 export async function fetchDeck(exclude: string[], limit = DECK_BATCH_SIZE): Promise<DeckCard[]> {
   const { data, error } = await supabase.rpc('get_deck', {
@@ -31,6 +38,44 @@ export async function fetchDeck(exclude: string[], limit = DECK_BATCH_SIZE): Pro
   });
   if (error) throw error;
   return (data ?? []) as DeckCard[];
+}
+
+/**
+ * Fetch a batch of the Following feed: unranked, strictly newest-first, drawn only from
+ * accounts the caller accepted-follows. Same shape/paging as `fetchDeck` so the two feeds
+ * share the deck machinery and the swipe/points/undo path unchanged.
+ */
+export async function fetchFollowingDeck(
+  exclude: string[],
+  limit = DECK_BATCH_SIZE,
+): Promise<DeckCard[]> {
+  const { data, error } = await supabase.rpc('get_following_deck', {
+    _limit: limit,
+    _exclude: exclude,
+  });
+  if (error) throw error;
+  return (data ?? []) as DeckCard[];
+}
+
+/** Counts that let the Following tab pick the right empty state. */
+export type FollowingSummary = {
+  following_count: number;
+  postable_count: number;
+};
+
+/**
+ * How many accounts the caller follows, and how many eligible posts those accounts have
+ * (ignoring swipes). Lets the Following tab tell "you follow nobody" from "nobody you
+ * follow has posted" from "you're caught up".
+ */
+export async function getFollowingSummary(): Promise<FollowingSummary> {
+  const { data, error } = await supabase.rpc('get_following_summary');
+  if (error) throw error;
+  const row = (data?.[0] ?? { following_count: 0, postable_count: 0 }) as FollowingSummary;
+  return {
+    following_count: Number(row.following_count ?? 0),
+    postable_count: Number(row.postable_count ?? 0),
+  };
 }
 
 /**

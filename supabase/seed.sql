@@ -64,14 +64,17 @@ cross join lateral (select id from public.tags order by random() limit 3) t
 where p.handle like 'user%'
 on conflict (user_id, tag_id) do nothing;
 
--- 5. ~100 posts, random author each (LATERAL re-evaluates per generated row).
+-- 5. ~100 posts spread across all seed authors. Pick the author by indexing an
+--    array of user ids with a per-row random() in the SELECT list — a LATERAL
+--    `order by random() limit 1` gets evaluated ONCE by the planner and assigns
+--    every post to the same author.
 insert into public.posts (
   id, user_id, media_url, thumbnail_url, media_type,
   caption, visibility, moderation_status, created_at
 )
 select
   gen_random_uuid(),
-  author.id,
+  u.ids[1 + floor(random() * array_length(u.ids, 1))::int],
   'https://picsum.photos/seed/fame' || g || '/800/1000',
   'https://picsum.photos/seed/fame' || g || '/200/250',
   case when random() < 0.8 then 'image' else 'video' end,
@@ -80,9 +83,7 @@ select
   case when random() < 0.9 then 'approved' else 'pending' end,
   now() - make_interval(hours => (random() * 720)::int)     -- spread over ~30d
 from generate_series(1, 100) as g
-cross join lateral (
-  select id from public.profiles where handle like 'user%' order by random() limit 1
-) as author;
+cross join (select array_agg(id) as ids from public.profiles where handle like 'user%') as u;
 
 -- 5b. Give the video-typed posts a real, short, publicly-hosted sample clip so the
 --     deck's video path is testable (the picsum URLs above are images). Thumbnail

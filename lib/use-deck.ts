@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useAuth } from '@/lib/auth-context';
-import { DECK_BATCH_SIZE, fetchDeck, type DeckCard, type SwipeDirection } from '@/lib/deck';
+import { DECK_BATCH_SIZE, type DeckCard, type FetchBatch, type SwipeDirection } from '@/lib/deck';
 import { SwipeQueue } from '@/lib/swipe-queue';
 
 export type DeckStatus = 'loading' | 'ready' | 'exhausted' | 'error';
@@ -23,8 +23,12 @@ export type UseDeck = {
   adjustCommentCount: (id: string, delta: number) => void;
 };
 
-/** Owns the worldwide deck: candidate buffer, prefetch, optimistic swipes, undo. */
-export function useDeck(): UseDeck {
+/**
+ * Owns a swipe deck: candidate buffer, prefetch, optimistic swipes, undo. Feed-agnostic —
+ * `fetchBatch` decides which candidate pool (worldwide vs following) fills the buffer;
+ * everything downstream (swipe/points/undo/offline queue) is identical across feeds.
+ */
+export function useDeck(fetchBatch: FetchBatch): UseDeck {
   const { user } = useAuth();
   const uid = user?.id;
 
@@ -52,7 +56,7 @@ export function useDeck(): UseDeck {
     setStatus('loading');
     loadedIds.current = new Set();
     try {
-      const batch = await fetchDeck([]);
+      const batch = await fetchBatch([]);
       batch.forEach((c) => loadedIds.current.add(c.id));
       setCards(batch);
       setLastSwiped(null);
@@ -61,13 +65,13 @@ export function useDeck(): UseDeck {
     } catch {
       setStatus('error');
     }
-  }, [uid, prefetchMedia]);
+  }, [uid, fetchBatch, prefetchMedia]);
 
   const fetchMore = useCallback(async () => {
     if (fetchingMore.current) return;
     fetchingMore.current = true;
     try {
-      const batch = await fetchDeck([...loadedIds.current]);
+      const batch = await fetchBatch([...loadedIds.current]);
       const fresh = batch.filter((c) => !loadedIds.current.has(c.id));
       fresh.forEach((c) => loadedIds.current.add(c.id));
       if (fresh.length) {
@@ -92,7 +96,7 @@ export function useDeck(): UseDeck {
     } finally {
       fetchingMore.current = false;
     }
-  }, [prefetchMedia]);
+  }, [fetchBatch, prefetchMedia]);
 
   // Bootstrap: swipe queue + first batch, per user.
   useEffect(() => {

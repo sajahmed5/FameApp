@@ -88,7 +88,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [profileLoading, setProfileLoading] = useState(false);
+  // The user id we have a DEFINITIVE profile answer for (found or confirmed-absent). While
+  // this doesn't match the current user, profile resolution is still pending — status must
+  // report 'loading', never a terminal state. Without this, the frame between "session
+  // resolved" and "profile fetch started" briefly looks like (verified, profile=null) and
+  // mis-computes 'needsProfile', which makes the auth guard bounce deep links to signup and
+  // then to the tabs index — losing the originally requested route.
+  const [resolvedUserId, setResolvedUserId] = useState<string | null>(null);
   const [reloadNonce, setReloadNonce] = useState(0);
 
   const userId = session?.user?.id ?? null;
@@ -119,13 +125,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       retryTimer.current = null;
     }
     if (!userId || !emailVerified || !session) {
+      // Reset profile when the signed-in user goes away; status is signedOut/unverified here
+      // regardless, so this only clears stale data — not a derived-state loop.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setProfile(null);
-      setProfileLoading(false);
       return;
     }
 
     let active = true;
-    setProfileLoading(true);
     (async () => {
       const result = await resolveProfile(session.user);
       if (!active) return;
@@ -135,7 +142,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       setProfile(result.kind === 'have' ? result.profile : null);
-      setProfileLoading(false);
+      // Mark this user's profile as definitively resolved (found or absent).
+      setResolvedUserId(session.user.id);
     })();
 
     return () => {
@@ -171,13 +179,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  // Verified session but this user's profile isn't resolved yet → still loading, not a
+  // terminal state. Covers the initial gap, the in-flight fetch, and user switches.
+  const profilePending = !!userId && emailVerified && resolvedUserId !== userId;
+
   const status: AuthStatus = sessionLoading
     ? 'loading'
     : !session
       ? 'signedOut'
       : !emailVerified
         ? 'unverified'
-        : profileLoading
+        : profilePending
           ? 'loading'
           : !profile
             ? 'needsProfile'

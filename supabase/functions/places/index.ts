@@ -49,6 +49,27 @@ async function googleNearby(lat: number, lon: number, query: string | undefined,
   return (j.places ?? []).map((p: Record<string, never>) => mapPlace(p, lat, lon));
 }
 
+// Forward place search for the relocatable search centre (city / area). Returns
+// display candidates with coordinates — the client stores the chosen centre via
+// the set_search_center RPC. Uses Text Search so cities/areas resolve well.
+async function googleGeocode(query: string, limit: number): Promise<{ label: string; lat: number; lon: number }[]> {
+  const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': GOOGLE_KEY, 'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location' },
+    body: JSON.stringify({ textQuery: query, maxResultCount: limit }),
+  });
+  if (!res.ok) throw new Error(`geocode ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  const j = await res.json();
+  return (j.places ?? [])
+    .map((p: Record<string, never>) => {
+      const loc = (p as { location?: { latitude?: number; longitude?: number } }).location ?? {};
+      const name = (p as { displayName?: { text?: string } }).displayName?.text ?? '';
+      const addr = (p as { formattedAddress?: string }).formattedAddress ?? '';
+      return { label: [name, addr].filter(Boolean).join(' · '), lat: loc.latitude ?? null, lon: loc.longitude ?? null };
+    })
+    .filter((p: { lat: number | null; lon: number | null }) => p.lat != null && p.lon != null);
+}
+
 async function googleDetails(placeId: string): Promise<Candidate | null> {
   const res = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`, {
     headers: { 'X-Goog-Api-Key': GOOGLE_KEY, 'X-Goog-FieldMask': 'id,displayName,primaryType,formattedAddress,location' },
@@ -130,6 +151,12 @@ Deno.serve(async (req) => {
       const limit = Math.min(Math.max(body.limit ?? 12, 1), 20);
       const venues = await googleNearby(body.lat, body.lon, body.query, limit);
       return json({ venues: venues.filter((v) => v.provider_place_id && v.name) });
+    }
+
+    if (body.action === 'geocode') {
+      if (!body.query || typeof body.query !== 'string') return json({ error: 'query_required' }, 400);
+      const limit = Math.min(Math.max(body.limit ?? 8, 1), 12);
+      return json({ places: await googleGeocode(body.query, limit) });
     }
 
     if (body.action === 'attach') {

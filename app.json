@@ -2,6 +2,7 @@
   "expo": {
     "name": "Fame",
     "slug": "fame",
+    "owner": "sajahmed5",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -64,6 +65,11 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "ce6bcabb-42f6-4ae2-90d7-5ca670af9229"
+      }
     }
   }
 }

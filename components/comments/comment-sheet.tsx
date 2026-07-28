@@ -57,7 +57,7 @@ export function CommentSheet({
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
-  const sheetHeight = Math.round(height * 0.86);
+  const sheetHeight = Math.round(height * 0.68);
 
   const c = useComments(postId, onCountDelta);
 

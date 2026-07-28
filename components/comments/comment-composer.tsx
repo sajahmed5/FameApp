@@ -15,6 +15,9 @@ type ComposerProps = {
   autoFocus?: boolean;
 };
 
+// Quick emojis that insert into the comment field (like Instagram's row).
+const QUICK_EMOJIS = ['❤️', '🙌', '🔥', '👏', '😢', '😍', '😮', '😂'];
+
 const COUNTER_SHOWS_AT = COMMENT_MAX_LENGTH - 100;
 
 export function CommentComposer({
@@ -60,6 +63,21 @@ export function CommentComposer({
           ) : null}
         </View>
       ) : null}
+
+      <View style={styles.emojiBar}>
+        {QUICK_EMOJIS.map((e) => (
+          <Pressable
+            key={e}
+            accessibilityLabel={`Add ${e}`}
+            onPress={() => setText((t) => (t + e).slice(0, COMMENT_MAX_LENGTH))}
+            hitSlop={4}
+            style={styles.emojiButton}>
+            <ThemedText type="default" style={styles.emoji}>
+              {e}
+            </ThemedText>
+          </Pressable>
+        ))}
+      </View>
 
       <View style={styles.row}>
         <TextInput
@@ -112,6 +130,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   contextText: { flex: 1 },
+  emojiBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 6,
+    paddingBottom: 4,
+  },
+  emojiButton: { padding: 4 },
+  emoji: { fontSize: 24 },
   row: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
   input: {
     flex: 1,

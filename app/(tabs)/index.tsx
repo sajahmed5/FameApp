@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CommentSheet } from '@/components/comments/comment-sheet';
 import { DeckError, DeckExhausted, DeckSkeleton } from '@/components/deck/deck-states';
 import { SwipeDeck } from '@/components/deck/swipe-deck';
 import { ThemedText } from '@/components/themed-text';
@@ -13,18 +14,27 @@ import { shareCard } from '@/lib/share';
 import { useDeck } from '@/lib/use-deck';
 
 export default function HomeScreen() {
-  const { cards, status, canUndo, pendingWrites, swipe, undo, retry } = useDeck();
+  const { cards, status, canUndo, pendingWrites, swipe, undo, retry, adjustCommentCount } =
+    useDeck();
   const insets = useSafeAreaInsets();
+
+  const [commentsCard, setCommentsCard] = useState<DeckCard | null>(null);
 
   const onShare = useCallback((card: DeckCard) => {
     void shareCard(card);
   }, []);
+  const onOpenComments = useCallback((card: DeckCard) => setCommentsCard(card), []);
 
   let body: React.ReactNode;
   if (cards.length > 0) {
     body = (
       <View style={styles.deckArea}>
-        <SwipeDeck cards={cards} onSwipe={swipe} onShare={onShare} />
+        <SwipeDeck
+          cards={cards}
+          onSwipe={swipe}
+          onShare={onShare}
+          onOpenComments={onOpenComments}
+        />
         <View style={styles.controls}>
           <UndoButton disabled={!canUndo} onPress={undo} />
         </View>
@@ -40,7 +50,18 @@ export default function HomeScreen() {
     body = <DeckSkeleton />;
   }
 
-  return <ThemedView style={styles.container}>{body}</ThemedView>;
+  return (
+    <ThemedView style={styles.container}>
+      {body}
+      {commentsCard ? (
+        <CommentSheet
+          postId={commentsCard.id}
+          onClose={() => setCommentsCard(null)}
+          onCountDelta={(delta) => adjustCommentCount(commentsCard.id, delta)}
+        />
+      ) : null}
+    </ThemedView>
+  );
 }
 
 function UndoButton({ disabled, onPress }: { disabled: boolean; onPress: () => void }) {

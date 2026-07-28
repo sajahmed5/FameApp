@@ -20,6 +20,7 @@ export type UseDeck = {
   swipe: (direction: SwipeDirection) => void;
   undo: () => void;
   retry: () => void;
+  adjustCommentCount: (id: string, delta: number) => void;
 };
 
 /** Owns the worldwide deck: candidate buffer, prefetch, optimistic swipes, undo. */
@@ -138,6 +139,15 @@ export function useDeck(): UseDeck {
     queueRef.current?.flush();
   }, [loadInitial]);
 
+  // Keep a card's comment count roughly in sync while its comment sheet is open.
+  const adjustCommentCount = useCallback((id: string, delta: number) => {
+    setCards((prev) =>
+      prev.map((c) =>
+        c.id === id ? { ...c, comment_count: Math.max(0, c.comment_count + delta) } : c,
+      ),
+    );
+  }, []);
+
   return {
     cards,
     status,
@@ -146,5 +156,6 @@ export function useDeck(): UseDeck {
     swipe,
     undo,
     retry,
+    adjustCommentCount,
   };
 }

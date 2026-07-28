@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { memo } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { CardMedia } from '@/components/deck/card-media';
@@ -14,9 +14,11 @@ import type { DeckCard } from '@/lib/deck';
 export const SwipeCard = memo(function SwipeCard({
   card,
   isActive,
+  onOpenComments,
 }: {
   card: DeckCard;
   isActive: boolean;
+  onOpenComments?: () => void;
 }) {
   return (
     <View style={styles.card}>
@@ -26,13 +28,18 @@ export const SwipeCard = memo(function SwipeCard({
       <View style={styles.topRight}>
         <Stat icon="heart" value={card.like_count} />
         <Stat icon="close" value={card.skip_count} />
-        {/* Comment button — visible but non-functional in this build. */}
-        <View style={styles.commentButton} accessibilityLabel="Comments (coming soon)">
+        <Pressable
+          onPress={onOpenComments}
+          disabled={!onOpenComments}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Open comments"
+          style={({ pressed }) => [styles.commentButton, pressed && { opacity: 0.6 }]}>
           <Ionicons name="chatbubble-outline" size={20} color="#fff" />
           <ThemedText type="small" style={styles.statText}>
             {card.comment_count}
           </ThemedText>
-        </View>
+        </Pressable>
       </View>
 
       {/* Bottom scrim + poster identity + caption. */}

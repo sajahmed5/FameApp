@@ -1,0 +1,17 @@
+{
+  "name": "fame-transcode-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Fame video transcode worker (Cloud Run): H.264/60s/poster + metadata strip, Supabase bucket in/out.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4"
+  }
+}

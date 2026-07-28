@@ -1,10 +1,46 @@
-# transcode-worker (reference)
+# transcode-worker
 
 The video branch of `media-pipeline` cannot transcode inline — a Supabase Edge
 Function is a Deno isolate with no ffmpeg and tight CPU/time/memory limits. This
-directory documents the **external worker** that `video.ts`'s `VideoTranscoder`
-integration point hands off to. Deploy it anywhere ffmpeg can run (a container,
-Cloud Run, Fly.io, a queue consumer) and point `TRANSCODER_URL` at it.
+is the **external worker** that `video.ts`'s `VideoTranscoder` integration point
+hands off to. It's a small Node + ffmpeg HTTP server (`server.js`, `Dockerfile`)
+built for **Google Cloud Run**, though it runs anywhere ffmpeg can (Fly.io, a
+container, a queue consumer). Point `TRANSCODER_URL` at it.
+
+Verified locally end-to-end against real Supabase storage: a 17.7 MB iPhone
+HEVC `.mov` → H.264 1080p mp4 + poster in the `media` bucket, staging cleaned,
+metadata stripped (~11 s).
+
+## Deploy to Cloud Run
+
+Video stays in the Supabase `media` bucket, so it keeps the same private/
+accepted-followers RLS as images — no separate playback-privacy system needed.
+
+```bash
+cd scripts/transcode-worker
+gcloud auth login                     # once, in your terminal (browser)
+gcloud config set project <your-gcp-project>
+
+gcloud run deploy fame-transcoder \
+  --source . \
+  --region europe-west2 \
+  --allow-unauthenticated \           # the worker gates itself with TRANSCODER_SECRET
+  --memory 2Gi --cpu 2 --timeout 300 \
+  --set-env-vars "SUPABASE_URL=https://<ref>.supabase.co,SUPABASE_SERVICE_ROLE_KEY=<service_role>,TRANSCODER_SECRET=<random>"
+```
+
+Then wire the Edge Function to it (the media-pipeline video path reads these):
+
+```bash
+supabase secrets set TRANSCODER_URL=<cloud-run-url> TRANSCODER_SECRET=<same random> --project-ref <ref>
+```
+
+`--memory 2Gi --cpu 2` comfortably transcodes a 60 s clip; scale as needed.
+Cloud Run scales to zero, so idle cost is nil. Keep the service-role key and
+secret out of source — they're Cloud Run env + Supabase secrets only.
+
+---
+## Contract
 
 ## Contract
 

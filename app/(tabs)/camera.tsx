@@ -1,5 +1,401 @@
-import { ScreenPlaceholder } from '@/components/screen-placeholder';
+import { Ionicons } from '@expo/vector-icons';
+import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Linking, Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { ThemedText } from '@/components/themed-text';
+import { Button } from '@/components/ui/button';
+import { BRAND } from '@/constants/config';
+import { useAuth } from '@/lib/auth-context';
+import type { PickedMedia } from '@/lib/upload';
+import { useUpload } from '@/lib/upload-manager';
+
+const MAX_VIDEO_MS = 60_000;
 
 export default function CameraScreen() {
-  return <ScreenPlaceholder title="Camera" subtitle="Capture & upload" />;
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const { profile } = useAuth();
+  const { begin } = useUpload();
+
+  const [camPerm, requestCam] = useCameraPermissions();
+  const [micPerm, requestMic] = useMicrophonePermissions();
+
+  const cameraRef = useRef<CameraView>(null);
+  const [facing, setFacing] = useState<'back' | 'front'>('back');
+  const [flash, setFlash] = useState<'off' | 'on'>('off');
+  const [mode, setMode] = useState<'picture' | 'video'>('picture');
+  const [busy, setBusy] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [recProgress, setRecProgress] = useState(0); // 0..1 of the 60s cap
+  const recTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recStart = useRef<number>(0);
+
+  const startNewComposition = useCallback(
+    (media: PickedMedia) => {
+      begin(media, { visibility: profile?.is_private ? 'private' : 'public' });
+      router.push('/compose');
+    },
+    [begin, profile?.is_private, router],
+  );
+
+  const clearTimer = useCallback(() => {
+    if (recTimer.current) clearInterval(recTimer.current);
+    recTimer.current = null;
+    setRecProgress(0);
+  }, []);
+  useEffect(() => () => clearTimer(), [clearTimer]);
+
+  const capturePhoto = useCallback(async () => {
+    if (!cameraRef.current || busy) return;
+    setBusy(true);
+    try {
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.9 });
+      if (photo?.uri) {
+        startNewComposition({
+          uri: photo.uri,
+          type: 'image',
+          mime: 'image/jpeg',
+          fileName: 'capture.jpg',
+          width: photo.width,
+          height: photo.height,
+        });
+      }
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, startNewComposition]);
+
+  const startRecording = useCallback(async () => {
+    if (!cameraRef.current || recording) return;
+    if (!micPerm?.granted) await requestMic();
+    setRecording(true);
+    recStart.current = Date.now();
+    recTimer.current = setInterval(() => {
+      setRecProgress(Math.min(1, (Date.now() - recStart.current) / MAX_VIDEO_MS));
+    }, 100);
+    try {
+      // maxDuration is the HARD 60s cap — recording stops itself at the limit.
+      const video = await cameraRef.current.recordAsync({ maxDuration: MAX_VIDEO_MS / 1000 });
+      if (video?.uri) {
+        startNewComposition({
+          uri: video.uri,
+          type: 'video',
+          mime: 'video/mp4',
+          fileName: 'capture.mp4',
+        });
+      }
+    } finally {
+      setRecording(false);
+      clearTimer();
+    }
+  }, [recording, micPerm?.granted, requestMic, startNewComposition, clearTimer]);
+
+  const stopRecording = useCallback(() => {
+    if (recording) cameraRef.current?.stopRecording();
+  }, [recording]);
+
+  // ---- Permission gate: explain BEFORE requesting; offer Settings if blocked. ----
+  if (!camPerm) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator color={BRAND.accent} />
+      </View>
+    );
+  }
+  if (!camPerm.granted) {
+    const blocked = !camPerm.canAskAgain;
+    return (
+      <View style={[styles.center, styles.explain]}>
+        <Ionicons name="camera-outline" size={56} color="#fff" />
+        <ThemedText type="subtitle" style={styles.explainText}>
+          Camera access
+        </ThemedText>
+        <ThemedText type="default" style={styles.explainBody}>
+          Fame needs your camera to capture photos and videos to post. We only use it while
+          you&apos;re on this screen.
+        </ThemedText>
+        {blocked ? (
+          <>
+            <ThemedText type="small" style={styles.explainBody}>
+              Camera access is turned off. Enable it in Settings to continue.
+            </ThemedText>
+            <Button title="Open Settings" onPress={() => Linking.openSettings()} />
+          </>
+        ) : (
+          <Button
+            title="Enable camera"
+            onPress={async () => {
+              await requestCam();
+              await requestMic();
+            }}
+          />
+        )}
+        <ThemedText type="small" style={styles.explainBody}>
+          Or pick something you&apos;ve already shot:
+        </ThemedText>
+        <Button
+          title="Choose from library"
+          variant="secondary"
+          onPress={() => pickFromLibrary(startNewComposition, setBusy)}
+        />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <CameraView
+        ref={cameraRef}
+        style={StyleSheet.absoluteFill}
+        facing={facing}
+        flash={flash}
+        mode={mode}
+      />
+
+      {/* Top controls */}
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+        <IconButton name="close" onPress={() => router.back()} />
+        <View style={styles.topRight}>
+          <IconButton
+            name={flash === 'on' ? 'flash' : 'flash-off'}
+            onPress={() => setFlash((f) => (f === 'on' ? 'off' : 'on'))}
+          />
+          <IconButton
+            name="camera-reverse-outline"
+            onPress={() => setFacing((f) => (f === 'back' ? 'front' : 'back'))}
+          />
+        </View>
+      </View>
+
+      {recording ? (
+        <View style={[styles.recPill, { top: insets.top + 60 }]}>
+          <View style={styles.recDot} />
+          <ThemedText type="small" style={styles.recText}>
+            {Math.ceil((recProgress * MAX_VIDEO_MS) / 1000)}s / 60s
+          </ThemedText>
+        </View>
+      ) : null}
+
+      {/* Bottom controls */}
+      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 24 }]}>
+        <View style={styles.modeRow}>
+          <ModeTab
+            label="Photo"
+            active={mode === 'picture'}
+            onPress={() => !recording && setMode('picture')}
+          />
+          <ModeTab
+            label="Video"
+            active={mode === 'video'}
+            onPress={() => !recording && setMode('video')}
+          />
+        </View>
+        <View style={styles.shutterRow}>
+          <IconButton
+            name="images-outline"
+            onPress={() => pickFromLibrary(startNewComposition, setBusy)}
+            disabled={recording}
+          />
+          <ShutterButton
+            mode={mode}
+            recording={recording}
+            progress={recProgress}
+            busy={busy}
+            onPressPhoto={capturePhoto}
+            onStartVideo={startRecording}
+            onStopVideo={stopRecording}
+          />
+          <View style={styles.spacer} />
+        </View>
+        <ThemedText type="small" style={styles.hint}>
+          {mode === 'video' ? 'Hold to record · 60s max' : 'Tap to capture'}
+        </ThemedText>
+      </View>
+    </View>
+  );
 }
+
+async function pickFromLibrary(onPicked: (m: PickedMedia) => void, setBusy: (b: boolean) => void) {
+  const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!perm.granted) {
+    if (!perm.canAskAgain) Linking.openSettings();
+    return;
+  }
+  setBusy(true);
+  try {
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images', 'videos'],
+      quality: 0.9,
+      videoMaxDuration: 60,
+    });
+    if (res.canceled || !res.assets?.length) return;
+    const a = res.assets[0];
+    const type = a.type === 'video' ? 'video' : 'image';
+    onPicked({
+      uri: a.uri,
+      type,
+      mime: a.mimeType ?? (type === 'video' ? 'video/mp4' : 'image/jpeg'),
+      fileName: a.fileName ?? undefined,
+      width: a.width,
+      height: a.height,
+    });
+  } finally {
+    setBusy(false);
+  }
+}
+
+function IconButton({
+  name,
+  onPress,
+  disabled,
+}: {
+  name: keyof typeof Ionicons.glyphMap;
+  onPress: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      hitSlop={10}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [styles.iconBtn, { opacity: disabled ? 0.4 : pressed ? 0.6 : 1 }]}>
+      <Ionicons name={name} size={26} color="#fff" />
+    </Pressable>
+  );
+}
+
+function ModeTab({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}>
+      <ThemedText type="smallBold" style={{ color: active ? '#fff' : 'rgba(255,255,255,0.55)' }}>
+        {label}
+      </ThemedText>
+    </Pressable>
+  );
+}
+
+function ShutterButton({
+  mode,
+  recording,
+  progress,
+  busy,
+  onPressPhoto,
+  onStartVideo,
+  onStopVideo,
+}: {
+  mode: 'picture' | 'video';
+  recording: boolean;
+  progress: number;
+  busy: boolean;
+  onPressPhoto: () => void;
+  onStartVideo: () => void;
+  onStopVideo: () => void;
+}) {
+  const isVideo = mode === 'video';
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={isVideo ? 'Hold to record' : 'Capture photo'}
+      onPress={isVideo ? undefined : onPressPhoto}
+      onPressIn={isVideo ? onStartVideo : undefined}
+      onPressOut={isVideo ? onStopVideo : undefined}
+      disabled={busy}
+      style={styles.shutterOuter}>
+      <View style={[styles.shutterRing, recording && styles.shutterRingRecording]} />
+      <View
+        style={[
+          styles.shutterInner,
+          isVideo && styles.shutterInnerVideo,
+          recording && styles.shutterInnerRecording,
+        ]}
+      />
+      {recording ? <View style={[styles.progressArc, { opacity: 0.3 + progress * 0.7 }]} /> : null}
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#000' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#000' },
+  explain: { padding: 32, gap: 14 },
+  explainText: { color: '#fff', textAlign: 'center' },
+  explainBody: { color: 'rgba(255,255,255,0.8)', textAlign: 'center' },
+  topBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+  },
+  topRight: { flexDirection: 'row', gap: 8 },
+  iconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  recPill: {
+    position: 'absolute',
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  recDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#ff4d4f' },
+  recText: { color: '#fff' },
+  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, alignItems: 'center', gap: 16 },
+  modeRow: { flexDirection: 'row', gap: 24 },
+  shutterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '80%',
+  },
+  spacer: { width: 44 },
+  shutterOuter: { width: 78, height: 78, alignItems: 'center', justifyContent: 'center' },
+  shutterRing: {
+    position: 'absolute',
+    width: 78,
+    height: 78,
+    borderRadius: 39,
+    borderWidth: 4,
+    borderColor: '#fff',
+  },
+  shutterRingRecording: { borderColor: '#ff4d4f' },
+  shutterInner: { width: 62, height: 62, borderRadius: 31, backgroundColor: '#fff' },
+  shutterInnerVideo: { backgroundColor: '#ff4d4f' },
+  shutterInnerRecording: { width: 32, height: 32, borderRadius: 8 },
+  progressArc: {
+    position: 'absolute',
+    width: 78,
+    height: 78,
+    borderRadius: 39,
+    borderWidth: 4,
+    borderColor: 'rgba(255,77,79,0.6)',
+  },
+  hint: { color: 'rgba(255,255,255,0.7)' },
+});

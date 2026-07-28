@@ -25,6 +25,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
  * `storage` undefined and supabase-js falls back to localStorage. `detectSessionInUrl`
  * only matters on web (magic-link / reset redirects land back in the browser).
  */
+/** Exposed for direct calls to Edge Functions (e.g. the media upload pipeline via XHR). */
+export const SUPABASE_URL = supabaseUrl;
+export const SUPABASE_ANON_KEY = supabaseAnonKey;
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     storage: Platform.OS === 'web' ? undefined : secureStoreAdapter,

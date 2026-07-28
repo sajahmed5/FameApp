@@ -51,6 +51,22 @@ export async function removeObjects(svc: SupabaseClient, bucket: string, paths: 
   }
 }
 
+/**
+ * Record the moderation verdict for a stored media key so the BEFORE-INSERT trigger on
+ * posts can stamp it onto the post the client later creates (the client cannot set
+ * moderation_status itself). Keyed by the media object key + owner.
+ */
+export async function recordVerdict(
+  svc: SupabaseClient, mediaKey: string, ownerId: string, moderationStatus: string,
+): Promise<void> {
+  const { error } = await svc.from('pipeline_verdicts').upsert({
+    media_key: mediaKey,
+    owner_id: ownerId,
+    moderation_status: moderationStatus,
+  });
+  if (error) throw new Error(`record verdict: ${error.message}`);
+}
+
 /** Short-lived signed URL for immediate client preview (bucket is private). */
 export async function signedUrl(svc: SupabaseClient, bucket: string, path: string, expiresIn = 3600): Promise<string | null> {
   const { data, error } = await svc.storage.from(bucket).createSignedUrl(path, expiresIn);

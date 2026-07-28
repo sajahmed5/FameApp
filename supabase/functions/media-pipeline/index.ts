@@ -23,7 +23,7 @@ import { stubScanner } from './csam.ts';
 import { coarseLocationCell, reverseGeocode } from './geo.ts';
 import { externalTranscoder, probeDurationSeconds } from './video.ts';
 import {
-  downloadObject, putObject, removeObjects, serviceClient, SERVING_BUCKET,
+  downloadObject, putObject, recordVerdict, removeObjects, serviceClient, SERVING_BUCKET,
   signedUrl, STAGING_BUCKET, userClient,
 } from './storage.ts';
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.45.4';
@@ -150,6 +150,8 @@ Deno.serve(async (req) => {
     track(SERVING_BUCKET, mediaPath);
     await putObject(svc, SERVING_BUCKET, thumbPath, processed.thumbnail, processed.mime);
     track(SERVING_BUCKET, thumbPath);
+    // Record the verdict so the post the client creates inherits this status.
+    await recordVerdict(svc, mediaPath, owner, moderationStatus);
     await removeObjects(svc, STAGING_BUCKET, [stagingPath]); // staging no longer needed
 
     // ===== STEP 7: build suggestions + response =====
@@ -223,6 +225,7 @@ async function handleVideo(args: {
       return json({ error: 'rejected', reason: 'content_policy' }, 422);
     }
     const moderationStatus = vision.decision === 'flag' ? 'flagged' : 'approved';
+    await recordVerdict(svc, t.mediaPath, owner, moderationStatus);
     await removeObjects(svc, STAGING_BUCKET, [args.stagingPath]);
 
     const suggestions = await buildSuggestions(svc, exif, vision.labels);

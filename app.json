@@ -33,6 +33,20 @@
       "expo-video",
       "@react-native-community/datetimepicker",
       [
+        "expo-camera",
+        {
+          "cameraPermission": "Fame uses the camera so you can capture photos and videos to post.",
+          "microphonePermission": "Fame uses the microphone to record audio for your videos.",
+          "recordAudioAndroid": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Fame needs access to your photos so you can pick existing media to post."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#208AEF",

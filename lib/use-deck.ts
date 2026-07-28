@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useAuth } from '@/lib/auth-context';
 import { DECK_BATCH_SIZE, type DeckCard, type FetchBatch, type SwipeDirection } from '@/lib/deck';
+import { resolveDeckMedia } from '@/lib/media';
 import { SwipeQueue } from '@/lib/swipe-queue';
 
 export type DeckStatus = 'loading' | 'ready' | 'exhausted' | 'error';
@@ -56,7 +57,7 @@ export function useDeck(fetchBatch: FetchBatch): UseDeck {
     setStatus('loading');
     loadedIds.current = new Set();
     try {
-      const batch = await fetchBatch([]);
+      const batch = await resolveDeckMedia(await fetchBatch([]));
       batch.forEach((c) => loadedIds.current.add(c.id));
       setCards(batch);
       setLastSwiped(null);
@@ -72,7 +73,7 @@ export function useDeck(fetchBatch: FetchBatch): UseDeck {
     fetchingMore.current = true;
     try {
       const batch = await fetchBatch([...loadedIds.current]);
-      const fresh = batch.filter((c) => !loadedIds.current.has(c.id));
+      const fresh = await resolveDeckMedia(batch.filter((c) => !loadedIds.current.has(c.id)));
       fresh.forEach((c) => loadedIds.current.add(c.id));
       if (fresh.length) {
         setCards((prev) => {

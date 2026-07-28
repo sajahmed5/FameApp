@@ -7,8 +7,10 @@ import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { UploadBanner } from '@/components/upload-banner';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth, type AuthStatus } from '@/lib/auth-context';
+import { UploadManagerProvider } from '@/lib/upload-manager';
 
 export const unstable_settings = {
   initialRouteName: '(tabs)',
@@ -70,6 +72,14 @@ function RootNavigator() {
         name="search"
         options={{ presentation: 'modal', headerShown: true, title: 'Search' }}
       />
+      <Stack.Screen
+        name="compose"
+        options={{ presentation: 'modal', headerShown: true, title: 'New post' }}
+      />
+      <Stack.Screen
+        name="post/[id]/edit"
+        options={{ presentation: 'modal', headerShown: true, title: 'Edit post' }}
+      />
     </Stack>
   );
 }
@@ -82,7 +92,10 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
           <AuthProvider>
-            <RootNavigator />
+            <UploadManagerProvider>
+              <RootNavigator />
+              <UploadBanner />
+            </UploadManagerProvider>
           </AuthProvider>
           <StatusBar style="auto" />
         </ThemeProvider>

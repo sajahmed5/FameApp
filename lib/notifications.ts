@@ -38,6 +38,7 @@ export type RegisterResult = 'registered' | 'denied' | 'unsupported' | 'unavaila
  * EAS project never throws or breaks the app; we just don't register a token.
  */
 export async function registerPushToken(): Promise<RegisterResult> {
+  if (Platform.OS === 'web') return 'unsupported'; // expo push is native-only
   if (!Device.isDevice) return 'unsupported'; // push doesn't work on simulators
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {

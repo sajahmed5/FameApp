@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 import {
   createContext,
   useCallback,
@@ -19,15 +20,21 @@ import {
   type NotificationType,
 } from '@/lib/notifications';
 
+// expo-notifications is native-only. On web these APIs are absent (and throw), so the
+// whole provider degrades to a no-op there — web has no push and no OS badge.
+const NATIVE = Platform.OS !== 'web';
+
 // Foreground display behaviour (must be set once, before any notification arrives).
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: false,
-    shouldSetBadge: true,
-  }),
-});
+if (NATIVE) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: false,
+      shouldSetBadge: true,
+    }),
+  });
+}
 
 type Ctx = { unread: number; refreshUnread: () => Promise<void>; clearAll: () => Promise<void> };
 const NotificationsContext = createContext<Ctx>({
@@ -60,7 +67,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const refreshUnread = useCallback(async () => {
     const n = await getUnreadCount();
     setUnread(n);
-    await Notifications.setBadgeCountAsync(n).catch(() => {});
+    if (NATIVE) await Notifications.setBadgeCountAsync(n).catch(() => {});
   }, []);
 
   const clearAll = useCallback(async () => {
@@ -85,12 +92,14 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
   // Foreground pushes → keep the badge fresh.
   useEffect(() => {
+    if (!NATIVE) return;
     const sub = Notifications.addNotificationReceivedListener(() => void refreshUnread());
     return () => sub.remove();
   }, [refreshUnread]);
 
   // Taps on a notification → deep link. Also handle a cold start from a tap.
   useEffect(() => {
+    if (!NATIVE) return;
     const sub = Notifications.addNotificationResponseReceivedListener((resp) => {
       route(resp.notification.request.content.data as never);
     });

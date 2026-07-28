@@ -1,7 +1,9 @@
 # Venue / place tagging — design
 
-Status: **design (not built)**. Blocked on a Places-provider key. This doc is the
-implementation spec; build it in the milestones at the end once a key exists.
+Status: **M1 (backend) BUILT + deployed** (migration 20260731090000_venues +
+`supabase/functions/places`). Google Places key configured. **M2–M4 (client
+picker, venue page, discovery) still to build** — see the milestones at the end.
+This doc remains the implementation spec.
 
 ## 1. Goal
 

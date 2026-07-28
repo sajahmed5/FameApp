@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
     body,
     sound: 'default',
     badge: typeof badge === 'number' ? badge : undefined,
-    data: { type: notif.type, post_id: notif.post_id, comment_id: notif.comment_id, actor, notification_id: notif.id },
+    data: { type: notif.type, post_id: notif.post_id, comment_id: notif.comment_id, actor, notification_id: notif.id, conversation_id: notif.payload?.conversation_id ?? null },
   }));
 
   // ---- send via Expo, then reap revoked tokens ----

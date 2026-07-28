@@ -13,7 +13,8 @@ export type NotificationType =
   | 'reply'
   | 'comment_reaction'
   | 'reach_milestone'
-  | 'moderation';
+  | 'moderation'
+  | 'message';
 
 export type InboxNotification = {
   id: string;

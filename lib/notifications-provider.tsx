@@ -45,10 +45,14 @@ const NotificationsContext = createContext<Ctx>({
 
 /** Deep-link a notification to the right screen from its data payload. */
 function route(
-  data: { type?: NotificationType; post_id?: string | null; actor?: string | null } | undefined,
+  data:
+    | { type?: NotificationType; post_id?: string | null; actor?: string | null; conversation_id?: string | null }
+    | undefined,
 ) {
   const type = data?.type;
   if (!type) return router.push('/notifications');
+  if (type === 'message' && data?.conversation_id)
+    return router.push({ pathname: '/conversation/[id]', params: { id: data.conversation_id } });
   if (type === 'follow_request') return router.push('/profile/requests');
   if ((type === 'new_follower' || type === 'follow_accepted') && data?.actor)
     return router.push(`/u/${data.actor}`);

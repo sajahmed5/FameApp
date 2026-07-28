@@ -3,6 +3,7 @@ import { Tabs } from 'expo-router';
 
 import { CameraTabButton } from '@/components/camera-tab-button';
 import { HeaderSearchButton } from '@/components/header-search-button';
+import { SettingsGearButton } from '@/components/settings-gear-button';
 import { BRAND } from '@/constants/config';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -76,7 +77,7 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? 'person' : 'person-outline'} size={size} color={color} />
           ),
-          headerRight: () => <HeaderSearchButton />,
+          headerRight: () => <SettingsGearButton />,
         }}
       />
     </Tabs>

@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { TagPicker, type SelectedTag } from '@/components/compose/tag-picker';
+import { PostAnalyticsCard } from '@/components/profile/post-analytics-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
@@ -101,6 +102,8 @@ export default function EditPostScreen() {
           <ThemedText type="small" themeColor="textSecondary">
             The media can&apos;t be changed — edit the details below.
           </ThemedText>
+
+          <PostAnalyticsCard postId={id} />
 
           <View>
             <TextField

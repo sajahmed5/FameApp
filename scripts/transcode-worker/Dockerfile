@@ -1,5 +1,7 @@
 # Fame video transcode worker — Node + ffmpeg, for Cloud Run.
-FROM node:20-slim
+# Node 22 (not 20): supabase-js's realtime client needs native WebSocket, which
+# only exists in Node 22+.
+FROM node:22-slim
 
 # ffmpeg (+ ffprobe) for transcoding.
 RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg \

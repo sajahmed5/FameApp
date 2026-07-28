@@ -32,3 +32,22 @@ export async function readExif(bytes: Uint8Array): Promise<ExifReadout> {
   }
   return { gps, takenAt };
 }
+
+/**
+ * Cheap pixel-dimension read from metadata (no full decode) — used to reject
+ * over-budget images BEFORE the expensive/memory-heavy decode. Returns null if
+ * dimensions aren't in the metadata.
+ */
+export async function readPixelDimensions(bytes: Uint8Array): Promise<{ width: number; height: number } | null> {
+  try {
+    const p = await exifr.parse(bytes, {
+      pick: ['ImageWidth', 'ImageHeight', 'ExifImageWidth', 'ExifImageHeight', 'PixelXDimension', 'PixelYDimension'],
+    });
+    const w = p?.ImageWidth ?? p?.ExifImageWidth ?? p?.PixelXDimension;
+    const h = p?.ImageHeight ?? p?.ExifImageHeight ?? p?.PixelYDimension;
+    if (Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0) return { width: w, height: h };
+  } catch {
+    // fall through
+  }
+  return null;
+}

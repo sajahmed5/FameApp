@@ -15,7 +15,8 @@
 // ============================================================================
 import { config } from './config.ts';
 import { detectMedia } from './content-type.ts';
-import { readExif } from './exif.ts';
+import { readExif, readPixelDimensions } from './exif.ts';
+import { readDimensions } from './dimensions.ts';
 import { processImage, verifyStripped } from './image.ts';
 import { scanAndLabel, type LabelSuggestion } from './vision.ts';
 import { stubScanner } from './csam.ts';
@@ -105,6 +106,20 @@ Deno.serve(async (req) => {
     if (detected.kind === 'video') {
       const result = await handleVideo({ svc, owner, mediaId, bytes, exif, stagingPath, track, cleanupAll });
       return result;
+    }
+
+    // Guard: reject over-budget images BEFORE decode (decoding a full-res phone
+    // photo to RGBA would exhaust the isolate's memory). Header parse is reliable
+    // even without EXIF; EXIF is the fallback.
+    const dims = readDimensions(bytes, detected.mime) ?? await readPixelDimensions(bytes);
+    if (dims && (dims.width * dims.height) / 1e6 > config.limits.maxImageMegapixels) {
+      await cleanupAll();
+      const mp = ((dims.width * dims.height) / 1e6).toFixed(1);
+      return json({
+        error: 'image_too_large',
+        message: `Image is ${mp} MP; the in-function limit is ${config.limits.maxImageMegapixels} MP. ` +
+          'Downscale before upload (the capture client should do this).',
+      }, 413);
     }
 
     // ===== STEP 3: EXIF STRIP (re-encode) + VERIFY =====

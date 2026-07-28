@@ -50,6 +50,13 @@ export const config = {
 
   limits: {
     maxImageBytes: num('MEDIA_MAX_IMAGE_BYTES', 15 * 1024 * 1024),
+    // Decoding to raw RGBA costs ~4 bytes/pixel; a Deno edge isolate cannot hold
+    // a full-res phone photo (an 18 MP HEIC → ~73 MB RGBA) plus the encoder heap.
+    // Over this budget we reject with guidance (the client downscales, or route
+    // to the external worker) rather than crash the isolate. Empirically the
+    // Supabase edge isolate handles ~4.5 MP and OOMs by ~6 MP, so 4 leaves margin
+    // (HEIC decode via libheif is heavier than JPEG). Tune per memory tier.
+    maxImageMegapixels: num('MEDIA_MAX_IMAGE_MEGAPIXELS', 4),
     maxVideoBytes: num('MEDIA_MAX_VIDEO_BYTES', 100 * 1024 * 1024),
     maxVideoSeconds: num('MEDIA_MAX_VIDEO_SECONDS', 60),
     uploadsPerHour: num('MEDIA_UPLOADS_PER_HOUR', 20),

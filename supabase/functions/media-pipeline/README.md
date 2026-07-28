@@ -74,6 +74,23 @@ supabase secrets set GOOGLE_VISION_API_KEY=... --project-ref yslrmejkaivqjvbuqfd
 Requires the Supabase CLI and a personal access token (`SUPABASE_ACCESS_TOKEN`,
 from supabase.com/dashboard/account/tokens).
 
+## Runtime limits (edge isolate) & the capture client
+
+Decoding to raw RGBA costs ~4 bytes/pixel, and a Supabase edge isolate is
+memory-tight: empirically it processes ~4.5 MP and OOMs by ~6 MP (HEIC via
+libheif is heavier still). So `MEDIA_MAX_IMAGE_MEGAPIXELS` defaults to **4** and
+the function reads dimensions from the image **header** (pre-decode) — anything
+larger is rejected with a clean `413 image_too_large`, never an opaque crash.
+
+Consequence: the capture client must **downscale before upload** (e.g. longest
+edge ≤ 2048 px ≈ 3 MP; the pipeline finalises display to 1440 px anyway). Full
+phone resolution (12–48 MP) is intentionally out of the inline budget — larger
+media belongs on the same external worker as video, or is downscaled client-side.
+
+Verified on the deployed function (project `yslrmejkaivqjvbuqfdc`): ≤ 4 MP images
+process end-to-end (strip → store → signed URLs); 4.5/8/12 MP and an 18 MP HEIC
+all return a clean `413`.
+
 ## Integration points to complete before production
 
 - **CSAM (`csam.ts`)** — replace `stubScanner` with a real hash-matching client

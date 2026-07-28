@@ -25,6 +25,7 @@ const CATEGORY: Record<string, string | null> = {
   reply: 'comments',
   comment_reaction: 'reactions',
   reach_milestone: 'reach',
+  message: 'messages',
   moderation: null,
 };
 
@@ -123,6 +124,7 @@ function compose(n: Notification, actor: string): { title: string; body: string 
     case 'reply': return { title: 'New reply', body: n.count > 1 ? `${n.count} new replies to your comment` : `${at} replied to your comment` };
     case 'comment_reaction': return { title: 'New reaction', body: `${at} reacted ${n.payload.emoji ?? ''} to your comment` };
     case 'reach_milestone': return { title: 'Your post is taking off 🎉', body: `Your post has reached ${fmt(n.payload.milestone)}+ people` };
+    case 'message': return { title: at, body: n.count > 1 ? `${n.count} new messages` : 'Sent you a message' };
     case 'moderation': return moderationMsg(String(n.payload.status ?? ''));
     default: return { title: 'Fame', body: 'You have a new notification' };
   }

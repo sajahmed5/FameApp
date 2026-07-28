@@ -10,6 +10,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { UploadBanner } from '@/components/upload-banner';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth, type AuthStatus } from '@/lib/auth-context';
+import { NotificationsProvider } from '@/lib/notifications-provider';
 import { UploadManagerProvider } from '@/lib/upload-manager';
 
 export const unstable_settings = {
@@ -92,10 +93,12 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
           <AuthProvider>
-            <UploadManagerProvider>
-              <RootNavigator />
-              <UploadBanner />
-            </UploadManagerProvider>
+            <NotificationsProvider>
+              <UploadManagerProvider>
+                <RootNavigator />
+                <UploadBanner />
+              </UploadManagerProvider>
+            </NotificationsProvider>
           </AuthProvider>
           <StatusBar style="auto" />
         </ThemeProvider>

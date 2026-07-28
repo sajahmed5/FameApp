@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 
+import { unregisterPushToken } from '@/lib/notifications';
 import { supabase } from '@/lib/supabase';
 import { ageBandFromDob } from '@/lib/validation';
 import type { Profile, SignupIdentityMetadata } from '@/types';
@@ -159,6 +160,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
+    // Drop this device's push token first (needs the session to satisfy RLS).
+    await unregisterPushToken().catch(() => {});
     await supabase.auth.signOut();
     setProfile(null);
   }, []);

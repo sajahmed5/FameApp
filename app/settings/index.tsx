@@ -43,8 +43,8 @@ export default function SettingsScreen() {
   const loadPrefs = useCallback(async () => {
     setPrefs(await getNotificationPrefs().catch(() => null));
   }, []);
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- mount data-loader
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount data-loader
     void loadPrefs();
   }, [loadPrefs]);
 
@@ -183,14 +183,19 @@ export default function SettingsScreen() {
                 onValueChange={(v) => togglePref('requests', v)}
               />
               <ToggleRow
-                label="Comments"
+                label="Comments & replies"
                 value={prefs.comments}
                 onValueChange={(v) => togglePref('comments', v)}
               />
               <ToggleRow
-                label="Likes"
-                value={prefs.likes}
-                onValueChange={(v) => togglePref('likes', v)}
+                label="Comment reactions"
+                value={prefs.reactions}
+                onValueChange={(v) => togglePref('reactions', v)}
+              />
+              <ToggleRow
+                label="Reach milestones"
+                value={prefs.reach}
+                onValueChange={(v) => togglePref('reach', v)}
               />
             </>
           )}

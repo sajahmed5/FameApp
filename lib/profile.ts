@@ -334,15 +334,17 @@ export async function deleteAccount(): Promise<void> {
 
 export type NotificationPrefs = {
   follows: boolean;
-  comments: boolean;
-  likes: boolean;
   requests: boolean;
+  comments: boolean;
+  reactions: boolean;
+  reach: boolean;
 };
 const DEFAULT_PREFS: NotificationPrefs = {
   follows: true,
-  comments: true,
-  likes: true,
   requests: true,
+  comments: true,
+  reactions: true,
+  reach: true,
 };
 
 export async function getNotificationPrefs(): Promise<NotificationPrefs> {

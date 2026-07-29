@@ -7,10 +7,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CommentSheet } from '@/components/comments/comment-sheet';
 import { DeckError, DeckExhausted, DeckSkeleton } from '@/components/deck/deck-states';
 import { SwipeDeck } from '@/components/deck/swipe-deck';
+import { ShareSheet } from '@/components/share-sheet';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import type { DeckCard, FetchBatch } from '@/lib/deck';
-import { shareCard } from '@/lib/share';
 import { useDeck } from '@/lib/use-deck';
 
 /** Context handed to a custom empty-state renderer. */
@@ -45,10 +45,10 @@ export function DeckView({ fetchBatch, header, renderEmpty }: DeckViewProps) {
   const router = useRouter();
 
   const [commentsCard, setCommentsCard] = useState<DeckCard | null>(null);
+  const [shareCardState, setShareCardState] = useState<DeckCard | null>(null);
 
-  const onShare = useCallback((card: DeckCard) => {
-    void shareCard(card);
-  }, []);
+  // Swipe-up opens the in-app share sheet (deck posts are always public → external allowed).
+  const onShare = useCallback((card: DeckCard) => setShareCardState(card), []);
   const onOpenComments = useCallback((card: DeckCard) => setCommentsCard(card), []);
   // Reuse the existing public profile screen — don't build a new one.
   const onOpenProfile = useCallback(
@@ -96,6 +96,13 @@ export function DeckView({ fetchBatch, header, renderEmpty }: DeckViewProps) {
           postId={commentsCard.id}
           onClose={() => setCommentsCard(null)}
           onCountDelta={(delta) => adjustCommentCount(commentsCard.id, delta)}
+        />
+      ) : null}
+      {shareCardState ? (
+        <ShareSheet
+          post={{ id: shareCardState.id, caption: shareCardState.caption }}
+          allowExternal
+          onClose={() => setShareCardState(null)}
         />
       ) : null}
     </View>

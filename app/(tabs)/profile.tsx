@@ -112,6 +112,16 @@ export default function ProfileScreen() {
             badge={requestCount}
             onPress={() => router.push('/profile/requests')}
           />
+          <ActionButton
+            icon="heart-outline"
+            label="Liked"
+            onPress={() => router.push({ pathname: '/swipes', params: { tab: 'liked' } })}
+          />
+          <ActionButton
+            icon="close-circle-outline"
+            label="Skipped"
+            onPress={() => router.push({ pathname: '/swipes', params: { tab: 'skipped' } })}
+          />
         </View>
         }
       />
@@ -171,7 +181,7 @@ function ActionButton({
 const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  actions: { flexDirection: 'row', gap: 8 },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   action: {
     flex: 1,
     flexDirection: 'row',

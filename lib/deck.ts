@@ -1,3 +1,4 @@
+import { signMediaPaths } from '@/lib/media';
 import { supabase } from '@/lib/supabase';
 
 /** A card returned by the `get_deck` RPC. */
@@ -114,4 +115,32 @@ export async function undoSwipe(postId: string): Promise<number> {
   const { data, error } = await supabase.rpc('undo_swipe', { _post_id: postId });
   if (error) throw error;
   return Number(data ?? 0);
+}
+
+/** A post the caller previously swiped, for the private Liked/Skipped review screen. */
+export type SwipedPost = {
+  post_id: string;
+  thumbnail_url: string; // signed for display
+  media_type: 'image' | 'video';
+  swiped_at: string;
+};
+
+/**
+ * The caller's own Liked ('right') or Skipped ('left') history, newest-first. Owner-only
+ * (swipe anonymity). Thumbnails are signed here for display. Undo a choice with `undoSwipe`.
+ */
+export async function getMySwipes(
+  direction: SwipeDirection,
+  before: string | null = null,
+  limit = 30,
+): Promise<SwipedPost[]> {
+  const { data, error } = await supabase.rpc('get_my_swipes', {
+    _direction: direction,
+    _limit: limit,
+    _before: before,
+  });
+  if (error) throw error;
+  const rows = (data ?? []) as SwipedPost[];
+  const signed = await signMediaPaths(rows.map((r) => r.thumbnail_url));
+  return rows.map((r) => ({ ...r, thumbnail_url: signed.get(r.thumbnail_url) ?? r.thumbnail_url }));
 }

@@ -138,7 +138,7 @@ export default function SignupIdentityScreen() {
       // Fresh signup: NOW create the auth user (after the under-13 gate), carrying the
       // identity in user_metadata so the profile can be created on verification.
       update({ displayName: displayName.trim(), handle, dateOfBirth: isoDob });
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: draft.email,
         password: draft.password,
         options: {
@@ -161,7 +161,16 @@ export default function SignupIdentityScreen() {
         return;
       }
       track('signup_started');
-      router.replace('/(auth)/signup/verify');
+      if (data.session) {
+        // Email confirmation is off → we're already signed in. Clear the in-memory
+        // signup draft and let the root guard carry us on (profile → onboarding →
+        // deck). A verify-email banner nudges them to confirm later.
+        reset();
+        router.replace('/');
+      } else {
+        // Confirmation required → wait on the "check your email" screen.
+        router.replace('/(auth)/signup/verify');
+      }
     } finally {
       setSubmitting(false);
     }

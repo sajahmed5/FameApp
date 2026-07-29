@@ -19,13 +19,17 @@ import type { Profile, SignupIdentityMetadata } from '@/types';
  * Drives root-layout routing:
  *   loading      — still resolving session or profile; show a splash
  *   signedOut    — no session; go to (auth)
- *   unverified   — session but email not confirmed; go to verification
- *   needsProfile — verified but no profiles row (abandoned signup); resume identity
- *   onboarding   — verified + profile, but onboarding not finished; run onboarding
- *   ready        — verified + profile + onboarding complete; go to (tabs)
+ *   needsProfile — signed in but no profiles row (abandoned signup); resume identity
+ *   onboarding   — profile exists, but onboarding not finished; run onboarding
+ *   ready        — profile + onboarding complete; go to (tabs)
+ *
+ * Note: email verification does NOT gate entry. A signed-in-but-unverified user
+ * (possible when Supabase email confirmation is off) flows through these states
+ * like anyone else; a VerifyEmailBanner nudges them to confirm. `emailVerified`
+ * is exposed so UI can show that reminder.
  */
 export type AuthStatus =
-  'loading' | 'signedOut' | 'unverified' | 'needsProfile' | 'onboarding' | 'ready';
+  'loading' | 'signedOut' | 'needsProfile' | 'onboarding' | 'ready';
 
 type AuthResult = { error: AuthError | null };
 
@@ -38,6 +42,8 @@ interface AuthContextValue {
   status: AuthStatus;
   session: Session | null;
   user: User | null;
+  /** Whether the signed-in user's email is confirmed. False → show the verify banner. */
+  emailVerified: boolean;
   profile: Profile | null;
   signIn: (email: string, password: string) => Promise<AuthResult>;
   signOut: () => Promise<void>;
@@ -121,15 +127,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Resolve (or create) the profile whenever we have a verified user.
+  // Resolve (or create) the profile whenever we have a signed-in user. Email
+  // verification is NOT required — an unverified session still gets a profile and
+  // enters the app (RLS scopes everything to auth.uid() regardless).
   const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (retryTimer.current) {
       clearTimeout(retryTimer.current);
       retryTimer.current = null;
     }
-    if (!userId || !emailVerified || !session) {
-      // Reset profile when the signed-in user goes away; status is signedOut/unverified here
+    if (!userId || !session) {
+      // Reset profile when the signed-in user goes away; status is signedOut here
       // regardless, so this only clears stale data — not a derived-state loop.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setProfile(null);
@@ -153,7 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       active = false;
     };
-  }, [userId, emailVerified, session, reloadNonce]);
+  }, [userId, session, reloadNonce]);
 
   const reload = useCallback(() => setReloadNonce((n) => n + 1), []);
 
@@ -185,29 +193,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  // Verified session but this user's profile isn't resolved yet → still loading, not a
+  // Signed in but this user's profile isn't resolved yet → still loading, not a
   // terminal state. Covers the initial gap, the in-flight fetch, and user switches.
-  const profilePending = !!userId && emailVerified && resolvedUserId !== userId;
+  const profilePending = !!userId && resolvedUserId !== userId;
 
   const status: AuthStatus = sessionLoading
     ? 'loading'
     : !session
       ? 'signedOut'
-      : !emailVerified
-        ? 'unverified'
-        : profilePending
-          ? 'loading'
-          : !profile
-            ? 'needsProfile'
-            : profile.onboarding_complete
-              ? 'ready'
-              : 'onboarding';
+      : profilePending
+        ? 'loading'
+        : !profile
+          ? 'needsProfile'
+          : profile.onboarding_complete
+            ? 'ready'
+            : 'onboarding';
 
   const value = useMemo<AuthContextValue>(
     () => ({
       status,
       session,
       user: session?.user ?? null,
+      emailVerified,
       profile,
       signIn,
       signOut,
@@ -215,7 +222,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       sendPasswordReset,
       reload,
     }),
-    [status, session, profile, signIn, signOut, resendVerification, sendPasswordReset, reload],
+    [status, session, emailVerified, profile, signIn, signOut, resendVerification, sendPasswordReset, reload],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

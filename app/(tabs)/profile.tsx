@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PostGrid } from '@/components/profile/post-grid';
 import { ProfileHeader } from '@/components/profile/profile-header';
+import { VerifyEmailBanner } from '@/components/verify-email-banner';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BRAND, TAB_BAR_CLEARANCE } from '@/constants/config';
@@ -80,11 +81,13 @@ export default function ProfileScreen() {
     });
 
   const header = (
-    <ProfileHeader
-      profile={overview}
-      onPressFollowers={() => goConnections('followers')}
-      onPressFollowing={() => goConnections('following')}
-      action={
+    <>
+      <VerifyEmailBanner />
+      <ProfileHeader
+        profile={overview}
+        onPressFollowers={() => goConnections('followers')}
+        onPressFollowing={() => goConnections('following')}
+        action={
         <View style={styles.actions}>
           <ActionButton
             icon="create-outline"
@@ -108,8 +111,9 @@ export default function ProfileScreen() {
             onPress={() => router.push('/profile/requests')}
           />
         </View>
-      }
-    />
+        }
+      />
+    </>
   );
 
   return (

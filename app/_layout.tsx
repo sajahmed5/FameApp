@@ -32,7 +32,6 @@ SplashScreen.preventAutoHideAsync();
 /**
  * Redirect based on auth status:
  *   signedOut    → (auth)/login  (but signup screens under (auth) are left alone)
- *   unverified   → signup/verify
  *   needsProfile → signup/identity  (resume an abandoned signup)
  *   onboarding   → (onboarding)/tags
  *   ready        → (tabs)
@@ -52,8 +51,6 @@ function useAuthGuard(status: AuthStatus) {
 
     if (status === 'signedOut') {
       if (!inAuth) router.replace('/(auth)/login');
-    } else if (status === 'unverified') {
-      if (!(inSignup && signupStep === 'verify')) router.replace('/(auth)/signup/verify');
     } else if (status === 'needsProfile') {
       if (!(inSignup && signupStep === 'identity')) router.replace('/(auth)/signup/identity');
     } else if (status === 'onboarding') {

@@ -44,6 +44,21 @@ export default function CameraScreen() {
 
   const startNewComposition = useCallback(
     (media: PickedMedia) => {
+      // Images go through the shared editor first (filters/text/stickers/draw), which
+      // burns edits in and then continues to the post or story flow. Video bypasses the
+      // editor — burning overlays into every frame is out of scope for this path.
+      if (media.type === 'image') {
+        router.push({
+          pathname: '/edit',
+          params: {
+            uri: media.uri,
+            target,
+            ...(media.width != null ? { w: String(media.width) } : {}),
+            ...(media.height != null ? { h: String(media.height) } : {}),
+          },
+        });
+        return;
+      }
       if (target === 'story') {
         router.push({ pathname: '/story/create', params: { uri: media.uri, type: media.type } });
         return;

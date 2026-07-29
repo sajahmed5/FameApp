@@ -87,9 +87,13 @@ export default function StoryCreateScreen() {
 
       <View style={[styles.top, { top: insets.top + 12 }]}>
         <Pressable onPress={() => router.back()} hitSlop={10}><Ionicons name="close" size={28} color="#fff" /></Pressable>
-        <Pressable onPress={() => setEditing(true)} hitSlop={10} style={styles.aa}>
-          <ThemedText type="smallBold" style={{ color: '#fff' }}>Aa</ThemedText>
-        </Pressable>
+        {/* Images arrive already edited (text burned in via the shared editor). Video
+            bypasses the editor, so it keeps the lightweight view-time text overlay. */}
+        {type === 'video' ? (
+          <Pressable onPress={() => setEditing(true)} hitSlop={10} style={styles.aa}>
+            <ThemedText type="smallBold" style={{ color: '#fff' }}>Aa</ThemedText>
+          </Pressable>
+        ) : null}
       </View>
 
       <Pressable onPress={share} disabled={busy} style={[styles.share, { bottom: insets.bottom + 16, backgroundColor: theme.tint }]}>

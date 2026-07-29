@@ -126,6 +126,10 @@ function RootNavigator() {
         name="tutorial"
         options={{ presentation: 'fullScreenModal', headerShown: false, gestureEnabled: false }}
       />
+      <Stack.Screen
+        name="edit"
+        options={{ presentation: 'fullScreenModal', headerShown: false, gestureEnabled: false }}
+      />
       <Stack.Screen name="points" options={{ headerShown: true, title: 'How points work' }} />
     </Stack>
   );

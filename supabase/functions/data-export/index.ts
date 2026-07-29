@@ -14,8 +14,14 @@ const MEDIA_BUCKETS = ['media', 'avatars'];
 const MEDIA_LINK_TTL = 60 * 60 * 24 * 7; // 7 days for the individual media links
 const ARCHIVE_LINK_TTL = 60 * 60 * 24; // 24h for the archive download link
 
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, content-type, apikey, x-client-info',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+  return new Response(JSON.stringify(body), { status, headers: { ...CORS, 'content-type': 'application/json' } });
 }
 
 function service() {
@@ -26,6 +32,7 @@ function service() {
 
 Deno.serve(
   withSentry('data-export', async (req) => {
+    if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
     if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
 
     const token = req.headers.get('Authorization')?.replace(/^Bearer\s+/i, '');

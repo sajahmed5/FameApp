@@ -18,8 +18,14 @@ import { reportError, withSentry } from '../_shared/sentry.ts';
 // Every bucket a user owns objects in, EXCEPT `evidence` (legal retention).
 const USER_BUCKETS = ['media', 'media-staging', 'avatars', 'exports'];
 
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, content-type, apikey, x-client-info',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+  return new Response(JSON.stringify(body), { status, headers: { ...CORS, 'content-type': 'application/json' } });
 }
 
 function service() {
@@ -49,6 +55,7 @@ async function purgeBucket(svc: ReturnType<typeof service>, bucket: string, uid:
 
 Deno.serve(
   withSentry('delete-account', async (req) => {
+    if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
     if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
     const svc = service();
 

@@ -32,7 +32,9 @@ import { reportError, withSentry } from '../_shared/sentry.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, content-type',
+  // `apikey` + `x-client-info` are sent by the web client (raw XHR / supabase-js); without
+  // them here the browser's CORS preflight fails and blocks the upload.
+  'Access-Control-Allow-Headers': 'authorization, content-type, apikey, x-client-info',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 

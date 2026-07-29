@@ -16,6 +16,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/use-theme';
+import { fetchDeck, type DeckCard } from '@/lib/deck';
+import { resolveDeckMedia } from '@/lib/media';
 import {
   ACCOUNTS_PAGE,
   PAGE,
@@ -637,7 +639,10 @@ function PostsGrid({
     return <EmptyState icon="location-outline" text="Set a place to search nearby — tap Change above." />;
   }
   if (empty) {
-    return <EmptyState icon="search-outline" text={mode === 'local' ? 'Search posts near your chosen area.' : 'Search captions, tags and alt text.'} />;
+    // Worldwide with no query → a "discover" grid of popular posts (get_deck: ranked by
+    // your top tags, broadened via the explore pool when there's little tag-matched content).
+    if (mode === 'worldwide') return <DiscoverGrid bottomInset={bottomInset} />;
+    return <EmptyState icon="search-outline" text="Search posts near your chosen area." />;
   }
   if (data.length === 0) {
     return <EmptyState icon="sad-outline" text="No posts match that." />;
@@ -770,6 +775,72 @@ function PlaceSearchSheet({ onClose, onPick }: { onClose: () => void; onPick: (p
   );
 }
 
+/**
+ * Default Worldwide view (no query): a grid of popular posts to browse. Fed by get_deck,
+ * so it's ranked by the viewer's top tags and automatically broadened (via the explore
+ * pool) toward fresh/unrelated content when there's little tag-matched material.
+ */
+function DiscoverGrid({ bottomInset }: { bottomInset: number }) {
+  const theme = useTheme();
+  const { width } = useWindowDimensions();
+  const cell = Math.floor((width - 4) / 3);
+  const [items, setItems] = useState<DeckCard[] | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const batch = await resolveDeckMedia(await fetchDeck([], 30));
+        if (active) setItems(batch);
+      } catch {
+        if (active) setItems([]);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (items === null) {
+    return (
+      <View style={styles.discoverLoading}>
+        <ActivityIndicator color={theme.textSecondary} />
+      </View>
+    );
+  }
+  if (items.length === 0) {
+    return <EmptyState icon="images-outline" text="Nothing to discover yet — be the first to post!" />;
+  }
+
+  return (
+    <FlatList
+      data={items}
+      key="discover"
+      numColumns={3}
+      keyExtractor={(p) => p.id}
+      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={{ paddingBottom: bottomInset + 16 }}
+      ListHeaderComponent={
+        <View style={styles.sectionHead}>
+          <ThemedText type="smallBold" themeColor="textSecondary">
+            POPULAR RIGHT NOW
+          </ThemedText>
+        </View>
+      }
+      renderItem={({ item }) => (
+        <Pressable onPress={() => router.push(`/post/${item.id}`)} style={{ width: cell, height: cell, padding: 1 }}>
+          <Image source={{ uri: item.thumbnail_url }} style={styles.gridImg} contentFit="cover" recyclingKey={item.id} />
+          {item.media_type === 'video' ? (
+            <View style={styles.playBadge}>
+              <Ionicons name="play" size={12} color="#fff" />
+            </View>
+          ) : null}
+        </Pressable>
+      )}
+    />
+  );
+}
+
 function EmptyState({ icon, text }: { icon: keyof typeof Ionicons.glyphMap; text: string }) {
   const theme = useTheme();
   return (
@@ -806,6 +877,7 @@ const styles = StyleSheet.create({
   followBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8, borderWidth: 1, minWidth: 84, alignItems: 'center' },
   tagRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
   tagIcon: { width: 40, height: 40, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  discoverLoading: { padding: 48, alignItems: 'center' },
   gridImg: { flex: 1, borderRadius: 2, backgroundColor: '#222' },
   playBadge: { position: 'absolute', top: 6, right: 6, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 999, padding: 3 },
   related: {},

@@ -70,12 +70,23 @@ export async function getCurrentCoords(): Promise<{ lat: number; lon: number } |
   }
 }
 
-export type NearbyPlace = { name: string; address: string | null; lat: number; lon: number };
+export type NearbyPlace = {
+  name: string;
+  address: string | null;
+  lat: number;
+  lon: number;
+  /** metres from the search origin, when known. */
+  distanceM: number | null;
+};
 
-/** Nearby public venues from the places proxy (Google, server-side) — for a picker. */
-export async function nearbyPlaces(lat: number, lon: number): Promise<NearbyPlace[]> {
+/**
+ * Public venues from the places proxy (Google, server-side). With no `query` it returns
+ * what's physically nearby; with a `query` it text-searches (a shop, restaurant, city or
+ * country), biased toward the origin — this powers the picker's search box.
+ */
+export async function nearbyPlaces(lat: number, lon: number, query?: string): Promise<NearbyPlace[]> {
   const { data, error } = await supabase.functions.invoke('places', {
-    body: { action: 'nearby', lat, lon, limit: 8 },
+    body: { action: 'nearby', lat, lon, ...(query ? { query } : {}), limit: 15 },
   });
   if (error) return [];
   const venues = ((data as { venues?: unknown[] })?.venues ?? []) as {
@@ -83,8 +94,15 @@ export async function nearbyPlaces(lat: number, lon: number): Promise<NearbyPlac
     address?: string | null;
     lat?: number | null;
     lon?: number | null;
+    distance_m?: number | null;
   }[];
   return venues
     .filter((v) => v.name && v.lat != null && v.lon != null)
-    .map((v) => ({ name: v.name as string, address: v.address ?? null, lat: v.lat as number, lon: v.lon as number }));
+    .map((v) => ({
+      name: v.name as string,
+      address: v.address ?? null,
+      lat: v.lat as number,
+      lon: v.lon as number,
+      distanceM: v.distance_m ?? null,
+    }));
 }

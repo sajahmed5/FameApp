@@ -22,6 +22,7 @@ import {
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BRAND } from '@/constants/config';
 
 import { EditableOverlay, type Transform } from '@/components/media-editor/editable-overlay';
 import { FILTERS, filterById } from '@/components/media-editor/filters';
@@ -310,7 +311,7 @@ export function MediaEditor({
                   <View
                     style={[
                       styles.filterSwatch,
-                      { borderColor: doc.filterId === f.id ? '#208AEF' : '#333' },
+                      { borderColor: doc.filterId === f.id ? BRAND.accent : '#333' },
                     ]}
                   />
                   <Text style={[styles.chipLabel, doc.filterId === f.id && styles.chipActive]}>{f.label}</Text>
@@ -432,8 +433,8 @@ function ToolTab({
 }) {
   return (
     <Pressable style={styles.tab} onPress={onPress}>
-      <Ionicons name={icon} size={22} color={active ? '#208AEF' : '#fff'} />
-      <Text style={[styles.tabLabel, active && { color: '#208AEF' }]}>{label}</Text>
+      <Ionicons name={icon} size={22} color={active ? BRAND.accent : '#fff'} />
+      <Text style={[styles.tabLabel, active && { color: BRAND.accent }]}>{label}</Text>
     </Pressable>
   );
 }
@@ -442,7 +443,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#000' },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 6 },
   topRight: { flexDirection: 'row', alignItems: 'center', gap: 18 },
-  doneBtn: { backgroundColor: '#208AEF', paddingHorizontal: 16, paddingVertical: 7, borderRadius: 18, minWidth: 60, alignItems: 'center' },
+  doneBtn: { backgroundColor: BRAND.accent, paddingHorizontal: 16, paddingVertical: 7, borderRadius: 18, minWidth: 60, alignItems: 'center' },
   doneText: { color: '#fff', fontWeight: '700' },
   canvasArea: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   panel: { backgroundColor: '#111' },
@@ -450,11 +451,11 @@ const styles = StyleSheet.create({
   filterChip: { alignItems: 'center', gap: 4, marginRight: 6 },
   filterSwatch: { width: 44, height: 44, borderRadius: 8, borderWidth: 2, backgroundColor: '#222' },
   chipLabel: { color: '#aaa', fontSize: 11 },
-  chipActive: { color: '#208AEF', fontWeight: '600' },
+  chipActive: { color: BRAND.accent, fontWeight: '600' },
   sticker: { padding: 6 },
   drawRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   brushDotWrap: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#333' },
-  brushDotSel: { borderColor: '#208AEF' },
+  brushDotSel: { borderColor: BRAND.accent },
   swatch: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: 'transparent' },
   swatchSel: { borderColor: '#fff' },
   addTextBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#222', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18 },
@@ -467,5 +468,5 @@ const styles = StyleSheet.create({
   textModalInput: { flex: 1, fontSize: 30, fontWeight: '700', textAlign: 'center', paddingHorizontal: 24 },
   textModalControls: { paddingBottom: 30 },
   fontChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: '#333' },
-  fontChipSel: { borderColor: '#208AEF' },
+  fontChipSel: { borderColor: BRAND.accent },
 });

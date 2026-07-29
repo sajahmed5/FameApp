@@ -2,6 +2,7 @@ import { Component, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Sentry } from '@/lib/sentry';
+import { BRAND } from '@/constants/config';
 
 type Props = { children: ReactNode; label?: string };
 type State = { error: Error | null };
@@ -45,6 +46,6 @@ const styles = StyleSheet.create({
   wrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 24 },
   title: { fontSize: 17, fontWeight: '700', color: '#888' },
   body: { color: '#888', textAlign: 'center' },
-  btn: { marginTop: 8, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 20, backgroundColor: '#208AEF' },
+  btn: { marginTop: 8, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 20, backgroundColor: BRAND.accent },
   btnText: { color: '#fff', fontWeight: '600' },
 });

@@ -4,7 +4,7 @@ import { ThemedText } from '@/components/themed-text';
 import { BRAND } from '@/constants/config';
 import { useTheme } from '@/hooks/use-theme';
 
-type ButtonVariant = 'primary' | 'secondary';
+type ButtonVariant = 'primary' | 'secondary' | 'outline';
 
 export type ButtonProps = Omit<PressableProps, 'children'> & {
   title: string;
@@ -23,10 +23,16 @@ export function Button({
 }: ButtonProps) {
   const theme = useTheme();
   const isDisabled = disabled || loading;
-  const isPrimary = variant === 'primary';
 
-  const backgroundColor = isPrimary ? BRAND.accent : theme.backgroundElement;
-  const textColor = isPrimary ? BRAND.onAccent : theme.text;
+  // primary = filled accent · secondary = filled neutral · outline = accent border, transparent
+  const backgroundColor =
+    variant === 'primary' ? BRAND.accent : variant === 'outline' ? 'transparent' : theme.backgroundElement;
+  const textColor =
+    variant === 'primary' ? BRAND.onAccent : variant === 'outline' ? BRAND.accent : theme.text;
+  const border =
+    variant === 'outline'
+      ? { borderWidth: 1.5, borderColor: BRAND.accent }
+      : null;
 
   return (
     <Pressable
@@ -35,6 +41,7 @@ export function Button({
       disabled={isDisabled}
       style={(state) => [
         styles.button,
+        border,
         { backgroundColor, opacity: isDisabled ? 0.5 : state.pressed ? 0.85 : 1 },
         typeof style === 'function' ? style(state) : style,
       ]}

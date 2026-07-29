@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { BRAND } from '@/constants/config';
 import { REACTION_EMOJIS, type CommentView } from '@/lib/comments';
 import { formatRelative } from '@/lib/relative-time';
 import { useTheme } from '@/hooks/use-theme';
@@ -102,7 +103,7 @@ export function CommentItem(props: Props) {
                   style={[
                     styles.pill,
                     {
-                      borderColor: mine ? '#208AEF' : theme.border,
+                      borderColor: mine ? BRAND.accent : theme.border,
                       backgroundColor: mine ? 'rgba(32,138,239,0.12)' : 'transparent',
                     },
                   ]}>
@@ -123,7 +124,7 @@ export function CommentItem(props: Props) {
               Failed to post.
             </ThemedText>
             <Pressable onPress={() => onRetry(comment)} hitSlop={6}>
-              <ThemedText type="small" style={{ color: '#208AEF', fontWeight: '700' }}>
+              <ThemedText type="small" style={{ color: BRAND.accent, fontWeight: '700' }}>
                 Retry
               </ThemedText>
             </Pressable>

@@ -9,6 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import type { OverlayLayer } from '@/components/media-editor/types';
+import { BRAND } from '@/constants/config';
 
 const TEXT_BASE = 34;
 const STICKER_BASE = 52;
@@ -149,5 +150,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   badgeDelete: { top: -12, right: -12, backgroundColor: '#FF3B30' },
-  badgeEdit: { top: -12, left: -12, backgroundColor: '#208AEF' },
+  badgeEdit: { top: -12, left: -12, backgroundColor: BRAND.accent },
 });

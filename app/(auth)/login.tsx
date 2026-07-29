@@ -1,6 +1,6 @@
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { AuthScreen } from '@/components/ui/auth-screen';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { FormMessage } from '@/components/ui/form-message';
 import { TextField } from '@/components/ui/text-field';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/lib/auth-context';
+import { useTheme } from '@/hooks/use-theme';
 import { useCooldown } from '@/lib/use-cooldown';
 import { validateEmail } from '@/lib/validation';
 
@@ -15,6 +16,8 @@ const RESEND_COOLDOWN_SECONDS = 60;
 
 export default function LoginScreen() {
   const { signIn, resendVerification } = useAuth();
+  const router = useRouter();
+  const theme = useTheme();
   const cooldown = useCooldown();
 
   const [email, setEmail] = useState('');
@@ -69,16 +72,24 @@ export default function LoginScreen() {
       footer={
         <>
           <Button title="Log in" onPress={onSubmit} loading={submitting} />
-          <View style={{ alignItems: 'center', gap: 10, paddingTop: 4 }}>
-            <Link href="/(auth)/forgot-password">
-              <ThemedText type="linkPrimary">Forgot password?</ThemedText>
-            </Link>
-            <Link href="/(auth)/signup/account">
-              <ThemedText type="link" themeColor="textSecondary">
-                New here? <ThemedText type="linkPrimary">Create an account</ThemedText>
-              </ThemedText>
-            </Link>
+          <Link href="/(auth)/forgot-password" style={styles.forgot}>
+            <ThemedText type="linkPrimary">Forgot password?</ThemedText>
+          </Link>
+
+          {/* Prominent, always-visible path to sign up — a labelled divider then an
+              outlined accent button, so new users can't miss it. */}
+          <View style={styles.dividerRow}>
+            <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+            <ThemedText type="small" themeColor="textSecondary">
+              New to Fame?
+            </ThemedText>
+            <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
           </View>
+          <Button
+            title="Create an account"
+            variant="outline"
+            onPress={() => router.push('/(auth)/signup/account')}
+          />
         </>
       }>
       {formError ? <FormMessage tone="error">{formError}</FormMessage> : null}
@@ -131,3 +142,9 @@ export default function LoginScreen() {
     </AuthScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  forgot: { alignSelf: 'center', paddingVertical: 2 },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 2 },
+  dividerLine: { flex: 1, height: StyleSheet.hairlineWidth },
+});

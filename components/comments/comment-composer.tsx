@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { BRAND } from '@/constants/config';
 import { COMMENT_MAX_LENGTH } from '@/lib/comments';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -98,7 +99,7 @@ export function CommentComposer({
           onPress={send}
           style={({ pressed }) => [
             styles.send,
-            { backgroundColor: canSend ? '#208AEF' : theme.backgroundSelected },
+            { backgroundColor: canSend ? BRAND.accent : theme.backgroundSelected },
             pressed && canSend ? { opacity: 0.85 } : null,
           ]}>
           <Ionicons name="arrow-up" size={20} color={canSend ? '#fff' : theme.textSecondary} />

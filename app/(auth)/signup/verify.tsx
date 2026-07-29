@@ -5,6 +5,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { AuthScreen } from '@/components/ui/auth-screen';
 import { Button } from '@/components/ui/button';
+import { BRAND } from '@/constants/config';
 import { FormMessage } from '@/components/ui/form-message';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth-context';
@@ -108,7 +109,7 @@ export default function SignupVerifyScreen() {
         </>
       }>
       <View style={styles.waiting}>
-        <ActivityIndicator color="#208AEF" />
+        <ActivityIndicator color={BRAND.accent} />
         <ThemedText type="small" themeColor="textSecondary">
           Waiting for verification…
         </ThemedText>

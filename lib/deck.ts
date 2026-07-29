@@ -57,6 +57,23 @@ export async function fetchFollowingDeck(
   return (data ?? []) as DeckCard[];
 }
 
+/**
+ * A page of the PERSISTENT Following feed (Instagram/TikTok-style): all recent posts
+ * from accepted-follow accounts, newest-first, NOT consumed by swiping. Cursor-paginated
+ * by the created_at of the last card you loaded (pass null for the first page).
+ */
+export async function fetchFollowingFeed(
+  before: string | null,
+  limit = 15,
+): Promise<DeckCard[]> {
+  const { data, error } = await supabase.rpc('get_following_feed', {
+    _limit: limit,
+    _before: before,
+  });
+  if (error) throw error;
+  return (data ?? []) as DeckCard[];
+}
+
 /** Counts that let the Following tab pick the right empty state. */
 export type FollowingSummary = {
   following_count: number;

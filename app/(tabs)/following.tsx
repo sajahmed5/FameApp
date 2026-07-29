@@ -1,24 +1,17 @@
-import { DeckView } from '@/components/deck/deck-view';
-import { FollowingEmpty } from '@/components/deck/following-empty';
-import { StoriesRail } from '@/components/deck/stories-rail';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { FollowingFeed } from '@/components/deck/following-feed';
 import { ThemedView } from '@/components/themed-view';
-import { fetchFollowingDeck } from '@/lib/deck';
 
 /**
- * Following — the unranked, newest-first feed of accepted-follow accounts. Same deck as
- * Home (shared `DeckView`), fed by a different candidate pool. Adds the stories rail on top
- * and Following-specific empty states. To drop stories, remove the `<StoriesRail />` header.
+ * Following — a persistent, Instagram/TikTok-style feed of recent posts from accounts you
+ * follow. Unlike the Home swipe deck, posts aren't consumed by swiping, so the feed doesn't
+ * empty out; you scroll, like, comment and share. The stories rail sits on top.
  */
 export default function FollowingScreen() {
   return (
     <ThemedView style={{ flex: 1 }}>
       <ErrorBoundary label="The feed">
-        <DeckView
-          fetchBatch={fetchFollowingDeck}
-          header={<StoriesRail />}
-          renderEmpty={({ retry }) => <FollowingEmpty onReload={retry} />}
-        />
+        <FollowingFeed />
       </ErrorBoundary>
     </ThemedView>
   );

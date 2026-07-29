@@ -2,9 +2,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { memo } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { CardMedia } from '@/components/deck/card-media';
+import { BRAND, TAB_BAR_CLEARANCE } from '@/constants/config';
 import type { DeckCard } from '@/lib/deck';
 import { formatCount } from '@/lib/format';
 
@@ -34,6 +36,7 @@ export const SwipeCard = memo(function SwipeCard({
   canUndo?: boolean;
   onUndo?: () => void;
 }) {
+  const insets = useSafeAreaInsets();
   return (
     <View style={styles.card}>
       <CardMedia card={card} isActive={isActive} />
@@ -60,7 +63,7 @@ export const SwipeCard = memo(function SwipeCard({
           accessibilityRole="button"
           accessibilityLabel="Open comments"
           style={({ pressed }) => [styles.commentButton, pressed && { opacity: 0.6 }]}>
-          <Ionicons name="chatbubble-outline" size={20} color="#fff" />
+          <Ionicons name="chatbubble" size={20} color={BRAND.accent} style={styles.railIcon} />
           <ThemedText type="small" style={styles.statText}>
             {formatCount(card.comment_count)}
           </ThemedText>
@@ -77,7 +80,7 @@ export const SwipeCard = memo(function SwipeCard({
               styles.actionButton,
               { opacity: canUndo ? (pressed ? 0.6 : 1) : 0.35 },
             ]}>
-            <Ionicons name="arrow-undo" size={20} color="#fff" />
+            <Ionicons name="arrow-undo" size={20} color={BRAND.accent} style={styles.railIcon} />
           </Pressable>
         ) : null}
       </View>
@@ -85,7 +88,9 @@ export const SwipeCard = memo(function SwipeCard({
       {/* Bottom scrim + poster identity + caption + tags. `box-none` so the scrim area
           itself passes touches through to the media (double-tap to like), while its
           interactive children (avatar, handle, tags) still receive their taps. */}
-      <View style={styles.bottomScrim} pointerEvents="box-none">
+      <View
+        style={[styles.bottomScrim, { paddingBottom: insets.bottom + TAB_BAR_CLEARANCE }]}
+        pointerEvents="box-none">
         <Pressable
           onPress={isActive && onOpenProfile ? () => onOpenProfile(card.poster_handle) : undefined}
           disabled={!isActive || !onOpenProfile}
@@ -163,7 +168,7 @@ function ActionStat({
       accessibilityRole="button"
       accessibilityLabel={label}
       style={({ pressed }) => [styles.stat, pressed && { opacity: 0.6 }]}>
-      <Ionicons name={icon} size={20} color="#fff" />
+      <Ionicons name={icon} size={20} color={BRAND.accent} style={styles.railIcon} />
       <ThemedText type="small" style={styles.statText}>
         {formatCount(value)}
       </ThemedText>
@@ -197,6 +202,8 @@ const styles = StyleSheet.create({
   stat: { alignItems: 'center', gap: 2 },
   commentButton: { alignItems: 'center', gap: 2, marginTop: 4 },
   actionButton: { alignItems: 'center', marginTop: 4 },
+  // Orange rail icons keep a drop shadow so they read on any photo behind them.
+  railIcon: { ...textShadow },
   statText: { color: '#fff', fontWeight: '700', ...textShadow },
   bottomScrim: {
     position: 'absolute',

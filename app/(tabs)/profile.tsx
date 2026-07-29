@@ -2,12 +2,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PostGrid } from '@/components/profile/post-grid';
 import { ProfileHeader } from '@/components/profile/profile-header';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BRAND } from '@/constants/config';
+import { BRAND, TAB_BAR_CLEARANCE } from '@/constants/config';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import {
@@ -21,6 +22,7 @@ import {
 export default function ProfileScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { profile: authProfile } = useAuth();
   const handle = authProfile?.handle;
 
@@ -118,6 +120,7 @@ export default function ProfileScreen() {
         onRetry={load}
         header={header}
         emptyText="You haven't posted yet."
+        bottomInset={insets.bottom + TAB_BAR_CLEARANCE}
         onPressPost={(p: GridPost) => router.push(`/post/${p.id}/edit`)}
       />
     </ThemedView>

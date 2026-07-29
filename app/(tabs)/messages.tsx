@@ -4,6 +4,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, TextInput, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -19,9 +20,11 @@ import {
 } from '@/lib/messages';
 import { confirm } from '@/lib/confirm';
 import { useRefresh } from '@/lib/use-refresh';
+import { TAB_BAR_CLEARANCE } from '@/constants/config';
 
 export default function MessagesScreen() {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const [items, setItems] = useState<Conversation[]>([]);
   const [tab, setTab] = useState<'messages' | 'requests'>('messages');
@@ -102,7 +105,10 @@ export default function MessagesScreen() {
           data={shown}
           keyExtractor={(c) => c.id}
           refreshControl={<RefreshControl {...refresh} tintColor={theme.textSecondary} />}
-          contentContainerStyle={shown.length === 0 ? styles.center : undefined}
+          contentContainerStyle={[
+            { paddingBottom: insets.bottom + TAB_BAR_CLEARANCE },
+            shown.length === 0 && styles.center,
+          ]}
           renderItem={({ item }) => (
             <ConversationRow
               conversation={item}

@@ -18,6 +18,8 @@ type Props = {
   /** Replace the grid with a locked state (private account, not followed). */
   locked?: boolean;
   emptyText?: string;
+  /** Extra bottom padding so the last row clears a floating tab bar (0 on stack screens). */
+  bottomInset?: number;
 };
 
 /**
@@ -32,6 +34,7 @@ export function PostGrid({
   header,
   locked,
   emptyText,
+  bottomInset = 0,
 }: Props) {
   const theme = useTheme();
   const { width } = useWindowDimensions();
@@ -43,6 +46,7 @@ export function PostGrid({
       <FlatList
         data={[]}
         renderItem={null}
+        contentContainerStyle={{ paddingBottom: bottomInset }}
         ListHeaderComponent={header}
         ListFooterComponent={
           <View style={styles.state}>
@@ -89,7 +93,7 @@ export function PostGrid({
       keyExtractor={(p) => p.id}
       numColumns={3}
       columnWrapperStyle={{ gap }}
-      contentContainerStyle={{ gap }}
+      contentContainerStyle={{ gap, paddingBottom: bottomInset }}
       ListHeaderComponent={header}
       ListFooterComponent={footer}
       initialNumToRender={18}

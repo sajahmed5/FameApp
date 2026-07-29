@@ -1,25 +1,53 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
+import { Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CameraTabButton } from '@/components/camera-tab-button';
 import { HeaderSearchButton } from '@/components/header-search-button';
 import { NotificationBellButton } from '@/components/notification-bell-button';
 import { SettingsGearButton } from '@/components/settings-gear-button';
-import { BRAND } from '@/constants/config';
+import { BRAND, TAB_BAR } from '@/constants/config';
 import { useTheme } from '@/hooks/use-theme';
 
 export default function TabsLayout() {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: BRAND.accent,
         tabBarInactiveTintColor: theme.textSecondary,
+        // Icons-only, like Instagram's nav — the pill stays compact and labels never clip.
+        tabBarShowLabel: false,
         headerStyle: { backgroundColor: theme.background },
         headerTitleStyle: { color: theme.text },
         headerShadowVisible: false,
-        tabBarStyle: { backgroundColor: theme.background },
+        // Instagram-style: a rounded pill floating above the bottom edge, so the feed
+        // flows under it. Screens that scroll pad their content by TAB_BAR_CLEARANCE.
+        tabBarStyle: {
+          position: 'absolute',
+          left: TAB_BAR.side,
+          right: TAB_BAR.side,
+          bottom: insets.bottom + TAB_BAR.bottom,
+          height: TAB_BAR.height,
+          borderRadius: TAB_BAR.height / 2,
+          backgroundColor: theme.backgroundElement,
+          borderTopWidth: 0,
+          paddingHorizontal: 6,
+          ...Platform.select({
+            web: { boxShadow: '0px 6px 20px rgba(0,0,0,0.18)' },
+            default: {
+              shadowColor: '#000',
+              shadowOpacity: 0.16,
+              shadowRadius: 14,
+              shadowOffset: { width: 0, height: 5 },
+              elevation: 10,
+            },
+          }),
+        },
+        tabBarItemStyle: { height: TAB_BAR.height, paddingVertical: 8 },
       }}>
       {/* 1. Home — worldwide feed */}
       <Tabs.Screen

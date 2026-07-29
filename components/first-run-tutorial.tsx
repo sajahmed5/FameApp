@@ -77,7 +77,11 @@ export function FirstRunTutorial({ onDone }: { onDone: () => void }) {
 
   const goNext = () => {
     if (index >= last) return onDone();
-    scrollRef.current?.scrollTo({ x: (index + 1) * width, animated: true });
+    // Advance index optimistically: on web onMomentumScrollEnd never fires, so we
+    // can't rely on the scroll handler to update it after a programmatic scroll.
+    const next = index + 1;
+    setIndex(next);
+    scrollRef.current?.scrollTo({ x: next * width, animated: true });
   };
 
   return (
@@ -95,6 +99,7 @@ export function FirstRunTutorial({ onDone }: { onDone: () => void }) {
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
+        onScroll={onScroll}
         onMomentumScrollEnd={onScroll}
         scrollEventThrottle={16}>
         {CARDS.map((card, i) => (

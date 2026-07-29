@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -62,20 +62,33 @@ export default function ProfileScreen() {
     setRequestCount(await getPendingRequestCount());
   }, [handle]);
 
+  const loadSwipes = useCallback(async (t: 'liked' | 'skipped') => {
+    try {
+      const rows = await getMySwipes(t === 'liked' ? 'right' : 'left');
+      if (t === 'liked') setLiked(rows);
+      else setSkipped(rows);
+    } catch {
+      if (t === 'liked') setLiked([]);
+      else setSkipped([]);
+    }
+  }, []);
+
+  // Refetch the active swipe tab whenever it becomes active — never show stale data
+  // (this is a persistent tab screen, so state survives navigating away and back).
+  const tabRef = useRef<Tab>('posts');
+  useEffect(() => {
+    tabRef.current = tab;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async loader; sets state on resolve
+    if (tab !== 'posts') void loadSwipes(tab);
+  }, [tab, loadSwipes]);
+
+  // Also refresh on focus (e.g. after liking in the deck, then returning here).
   useFocusEffect(
     useCallback(() => {
       void load();
-    }, [load]),
+      if (tabRef.current !== 'posts') void loadSwipes(tabRef.current);
+    }, [load, loadSwipes]),
   );
-
-  // Lazy-load the Liked / Skipped tabs the first time they're opened.
-  useEffect(() => {
-    if (tab === 'liked' && liked === null) {
-      void getMySwipes('right').then(setLiked, () => setLiked([]));
-    } else if (tab === 'skipped' && skipped === null) {
-      void getMySwipes('left').then(setSkipped, () => setSkipped([]));
-    }
-  }, [tab, liked, skipped]);
 
   if (!overview) {
     return (

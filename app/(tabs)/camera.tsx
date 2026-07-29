@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,6 +20,14 @@ export default function CameraScreen() {
   const router = useRouter();
   const { profile } = useAuth();
   const { begin } = useUpload();
+  const { dest } = useLocalSearchParams<{ dest?: string }>();
+
+  // Capture destination: a normal post, or a 24h story (entered from the rail's +).
+  const [target, setTarget] = useState<'post' | 'story'>('post');
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync target to the route param
+    setTarget(dest === 'story' ? 'story' : 'post');
+  }, [dest]);
 
   const [camPerm, requestCam] = useCameraPermissions();
   const [micPerm, requestMic] = useMicrophonePermissions();
@@ -36,10 +44,14 @@ export default function CameraScreen() {
 
   const startNewComposition = useCallback(
     (media: PickedMedia) => {
+      if (target === 'story') {
+        router.push({ pathname: '/story/create', params: { uri: media.uri, type: media.type } });
+        return;
+      }
       begin(media, { visibility: profile?.is_private ? 'private' : 'public' });
       router.push('/compose');
     },
-    [begin, profile?.is_private, router],
+    [target, begin, profile?.is_private, router],
   );
 
   const clearTimer = useCallback(() => {
@@ -72,14 +84,16 @@ export default function CameraScreen() {
   const startRecording = useCallback(async () => {
     if (!cameraRef.current || recording) return;
     if (!micPerm?.granted) await requestMic();
+    // Stories cap video at 15s; posts at 60s.
+    const videoMaxMs = target === 'story' ? 15_000 : MAX_VIDEO_MS;
     setRecording(true);
     recStart.current = Date.now();
     recTimer.current = setInterval(() => {
-      setRecProgress(Math.min(1, (Date.now() - recStart.current) / MAX_VIDEO_MS));
+      setRecProgress(Math.min(1, (Date.now() - recStart.current) / videoMaxMs));
     }, 100);
     try {
-      // maxDuration is the HARD 60s cap — recording stops itself at the limit.
-      const video = await cameraRef.current.recordAsync({ maxDuration: MAX_VIDEO_MS / 1000 });
+      // maxDuration is the HARD cap — recording stops itself at the limit.
+      const video = await cameraRef.current.recordAsync({ maxDuration: videoMaxMs / 1000 });
       if (video?.uri) {
         startNewComposition({
           uri: video.uri,
@@ -92,7 +106,7 @@ export default function CameraScreen() {
       setRecording(false);
       clearTimer();
     }
-  }, [recording, micPerm?.granted, requestMic, startNewComposition, clearTimer]);
+  }, [recording, micPerm?.granted, requestMic, startNewComposition, clearTimer, target]);
 
   const stopRecording = useCallback(() => {
     if (recording) cameraRef.current?.stopRecording();
@@ -159,6 +173,18 @@ export default function CameraScreen() {
       {/* Top controls */}
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <IconButton name="close" onPress={() => router.back()} />
+        <View style={styles.destToggle}>
+          {(['post', 'story'] as const).map((t) => (
+            <Pressable
+              key={t}
+              onPress={() => !recording && setTarget(t)}
+              style={[styles.destTab, target === t && { backgroundColor: 'rgba(255,255,255,0.9)' }]}>
+              <ThemedText type="small" style={{ color: target === t ? '#000' : '#fff', fontWeight: '700' }}>
+                {t === 'post' ? 'Post' : 'Story'}
+              </ThemedText>
+            </Pressable>
+          ))}
+        </View>
         <View style={styles.topRight}>
           <IconButton
             name={flash === 'on' ? 'flash' : 'flash-off'}
@@ -175,7 +201,8 @@ export default function CameraScreen() {
         <View style={[styles.recPill, { top: insets.top + 60 }]}>
           <View style={styles.recDot} />
           <ThemedText type="small" style={styles.recText}>
-            {Math.ceil((recProgress * MAX_VIDEO_MS) / 1000)}s / 60s
+            {Math.ceil((recProgress * (target === 'story' ? 15_000 : MAX_VIDEO_MS)) / 1000)}s /{' '}
+            {target === 'story' ? 15 : 60}s
           </ThemedText>
         </View>
       ) : null}
@@ -346,6 +373,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   topRight: { flexDirection: 'row', gap: 8 },
+  destToggle: { flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 999, padding: 3 },
+  destTab: { paddingHorizontal: 14, paddingVertical: 5, borderRadius: 999 },
   iconBtn: {
     width: 44,
     height: 44,

@@ -1,16 +1,36 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, Share, StyleSheet, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  Pressable,
+  Share,
+  StyleSheet,
+  TextInput,
+  useWindowDimensions,
+  View,
+} from 'react-native';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated, {
+  runOnJS,
+  SlideInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { ActionMenu } from '@/components/ui/action-menu';
 import { useTheme } from '@/hooks/use-theme';
 import { trackFirst } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth-context';
 import { useAndroidBack } from '@/lib/use-android-back';
 import type { Conversation } from '@/lib/messages';
+import { POST_REPORT_REASONS, reportPost } from '@/lib/posts';
 import { getShareTargets, postLink, sharePost, type SharePerson } from '@/lib/share';
 
 type Target =
@@ -28,6 +48,7 @@ export function ShareSheet({
 }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const { height: winH } = useWindowDimensions();
   const { user } = useAuth();
   useAndroidBack(true, onClose); // hardware back closes the share sheet
   const [targets, setTargets] = useState<Target[]>([]);
@@ -37,6 +58,30 @@ export function ShareSheet({
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+
+  // Draggable sheet: opens at COLLAPSED, drag the grabber up to EXPANDED (near full
+  // screen) or down past a threshold to dismiss.
+  const EXPANDED = winH - insets.top - 6;
+  const COLLAPSED = Math.min(EXPANDED, Math.round(winH * 0.55) + 40);
+  const h = useSharedValue(COLLAPSED); // opens collapsed; the Animated.View slides up on mount
+  const startH = useSharedValue(0);
+  const pan = Gesture.Pan()
+    .onStart(() => {
+      startH.value = h.value;
+    })
+    .onChange((e) => {
+      h.value = Math.max(140, Math.min(EXPANDED, startH.value - e.translationY));
+    })
+    .onEnd((e) => {
+      if (h.value < COLLAPSED * 0.55) {
+        runOnJS(onClose)();
+        return;
+      }
+      const target = h.value > (COLLAPSED + EXPANDED) / 2 || e.velocityY < -700 ? EXPANDED : COLLAPSED;
+      h.value = withSpring(target, { damping: 22, stiffness: 220 });
+    });
+  const sheetStyle = useAnimatedStyle(() => ({ height: h.value }));
 
   useEffect(() => {
     void getShareTargets()
@@ -101,83 +146,122 @@ export function ShareSheet({
     }
   };
 
+  const doReport = (reason: string) => {
+    reportPost(post.id, reason)
+      .then(() => Alert.alert('Thanks for reporting', 'Our team will review this post.'))
+      .catch(() => Alert.alert("Couldn't report", 'Please try again in a moment.'));
+  };
+
   return (
-    <View style={styles.overlay}>
-      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close" />
-      <ThemedView style={[styles.sheet, { borderColor: theme.border, paddingBottom: insets.bottom + 8 }]}>
-        <View style={[styles.grabber, { backgroundColor: theme.border }]} />
-        <View style={styles.headerRow}>
-          <ThemedText type="subtitle">Share</ThemedText>
-          <Pressable onPress={onClose} hitSlop={10}><Ionicons name="close" size={22} color={theme.text} /></Pressable>
-        </View>
+    <Modal transparent visible animationType="fade" onRequestClose={onClose}>
+      <GestureHandlerRootView style={styles.flex}>
+        <View style={styles.overlay}>
+          <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close" />
+          <Animated.View
+            entering={SlideInDown.springify().damping(22)}
+            style={[styles.sheet, sheetStyle, { borderColor: theme.border, backgroundColor: theme.background }]}>
+            {/* Drag the grabber to resize/maximise. */}
+            <GestureDetector gesture={pan}>
+              <View style={styles.grabZone} accessibilityLabel="Drag to resize">
+                <View style={[styles.grabber, { backgroundColor: theme.border }]} />
+              </View>
+            </GestureDetector>
 
-        <View style={[styles.search, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-          <Ionicons name="search" size={16} color={theme.textSecondary} />
-          <TextInput value={query} onChangeText={setQuery} placeholder="Search people & chats" placeholderTextColor={theme.textSecondary} style={[styles.searchInput, { color: theme.text }]} autoCapitalize="none" />
-        </View>
-
-        {loading ? (
-          <ActivityIndicator style={{ padding: 24 }} color={theme.textSecondary} />
-        ) : (
-          <FlatList
-            data={shown}
-            keyExtractor={(t) => t.key}
-            keyboardShouldPersistTaps="handled"
-            style={{ maxHeight: 300 }}
-            renderItem={({ item }) => {
-              const isSel = selected.has(item.key);
-              return (
-                <Pressable onPress={() => toggle(item.key)} style={styles.row}>
-                  {item.avatar ? (
-                    <Image source={{ uri: item.avatar }} style={styles.avatar} contentFit="cover" />
-                  ) : (
-                    <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: theme.backgroundSelected }]}>
-                      <Ionicons name={item.kind === 'conversation' && item.convo.type === 'group' ? 'people' : 'person'} size={18} color={theme.textSecondary} />
-                    </View>
-                  )}
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <ThemedText type="smallBold" numberOfLines={1}>{item.name}</ThemedText>
-                    <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>{item.sub}</ThemedText>
-                  </View>
-                  <Ionicons name={isSel ? 'checkmark-circle' : 'ellipse-outline'} size={22} color={isSel ? theme.tint : theme.textSecondary} />
+            <View style={styles.headerRow}>
+              <ThemedText type="subtitle">Share</ThemedText>
+              <View style={styles.headerActions}>
+                <Pressable onPress={() => setReportOpen(true)} hitSlop={10} accessibilityRole="button" accessibilityLabel="Report this post">
+                  <Ionicons name="flag-outline" size={20} color={theme.text} />
                 </Pressable>
-              );
-            }}
-            ListEmptyComponent={<ThemedText type="small" themeColor="textSecondary" style={{ padding: 16, textAlign: 'center' }}>Follow people or start a chat to share here.</ThemedText>}
-          />
-        )}
+                <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close">
+                  <Ionicons name="close" size={22} color={theme.text} />
+                </Pressable>
+              </View>
+            </View>
 
-        {selected.size > 0 ? (
-          <View style={styles.sendRow}>
-            <TextInput value={message} onChangeText={setMessage} placeholder="Add a message…" placeholderTextColor={theme.textSecondary} style={[styles.msgInput, { backgroundColor: theme.backgroundElement, color: theme.text }]} />
-            <Pressable onPress={send} disabled={sending} style={[styles.sendBtn, { backgroundColor: theme.tint }]}>
-              {sending ? <ActivityIndicator color="#fff" /> : <ThemedText type="smallBold" style={{ color: '#fff' }}>{sent ? 'Sent ✓' : `Send (${selected.size})`}</ThemedText>}
-            </Pressable>
-          </View>
-        ) : null}
+            <View style={[styles.body, { paddingBottom: insets.bottom + 8 }]}>
+              <View style={[styles.search, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+                <Ionicons name="search" size={16} color={theme.textSecondary} />
+                <TextInput value={query} onChangeText={setQuery} placeholder="Search people & chats" placeholderTextColor={theme.textSecondary} style={[styles.searchInput, { color: theme.text }]} autoCapitalize="none" />
+              </View>
 
-        {/* External share is the SECOND option, and disallowed for private posts. */}
-        {allowExternal ? (
-          <Pressable onPress={shareExternally} style={[styles.external, { borderColor: theme.border }]}>
-            <Ionicons name="share-outline" size={18} color={theme.text} />
-            <ThemedText type="small">Share externally…</ThemedText>
-          </Pressable>
-        ) : (
-          <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: 'center', paddingVertical: 8 }}>
-            Private posts can only be shared in-app with accepted followers.
-          </ThemedText>
-        )}
-      </ThemedView>
-    </View>
+              {loading ? (
+                <ActivityIndicator style={{ padding: 24 }} color={theme.textSecondary} />
+              ) : (
+                <FlatList
+                  data={shown}
+                  keyExtractor={(t) => t.key}
+                  keyboardShouldPersistTaps="handled"
+                  style={styles.flex}
+                  renderItem={({ item }) => {
+                    const isSel = selected.has(item.key);
+                    return (
+                      <Pressable onPress={() => toggle(item.key)} style={styles.row}>
+                        {item.avatar ? (
+                          <Image source={{ uri: item.avatar }} style={styles.avatar} contentFit="cover" />
+                        ) : (
+                          <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: theme.backgroundSelected }]}>
+                            <Ionicons name={item.kind === 'conversation' && item.convo.type === 'group' ? 'people' : 'person'} size={18} color={theme.textSecondary} />
+                          </View>
+                        )}
+                        <View style={{ flex: 1, minWidth: 0 }}>
+                          <ThemedText type="smallBold" numberOfLines={1}>{item.name}</ThemedText>
+                          <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>{item.sub}</ThemedText>
+                        </View>
+                        <Ionicons name={isSel ? 'checkmark-circle' : 'ellipse-outline'} size={22} color={isSel ? theme.tint : theme.textSecondary} />
+                      </Pressable>
+                    );
+                  }}
+                  ListEmptyComponent={<ThemedText type="small" themeColor="textSecondary" style={{ padding: 16, textAlign: 'center' }}>Follow people or start a chat to share here.</ThemedText>}
+                />
+              )}
+
+              {selected.size > 0 ? (
+                <View style={styles.sendRow}>
+                  <TextInput value={message} onChangeText={setMessage} placeholder="Add a message…" placeholderTextColor={theme.textSecondary} style={[styles.msgInput, { backgroundColor: theme.backgroundElement, color: theme.text }]} />
+                  <Pressable onPress={send} disabled={sending} style={[styles.sendBtn, { backgroundColor: theme.tint }]}>
+                    {sending ? <ActivityIndicator color="#fff" /> : <ThemedText type="smallBold" style={{ color: '#fff' }}>{sent ? 'Sent ✓' : `Send (${selected.size})`}</ThemedText>}
+                  </Pressable>
+                </View>
+              ) : null}
+
+              {/* External share is the SECOND option, and disallowed for private posts. */}
+              {allowExternal ? (
+                <Pressable onPress={shareExternally} style={[styles.external, { borderColor: theme.border }]}>
+                  <Ionicons name="share-outline" size={18} color={theme.text} />
+                  <ThemedText type="small">Share externally…</ThemedText>
+                </Pressable>
+              ) : (
+                <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: 'center', paddingVertical: 8 }}>
+                  Private posts can only be shared in-app with accepted followers.
+                </ThemedText>
+              )}
+            </View>
+          </Animated.View>
+        </View>
+
+        {/* Rendered at the modal root so its backdrop covers the whole screen, not just the sheet. */}
+        <ActionMenu
+          visible={reportOpen}
+          title="Report this post"
+          onClose={() => setReportOpen(false)}
+          options={POST_REPORT_REASONS.map((r) => ({ label: r, onPress: () => doReport(r) }))}
+        />
+      </GestureHandlerRootView>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 30, justifyContent: 'flex-end' },
+  flex: { flex: 1 },
+  overlay: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)' },
-  sheet: { borderTopLeftRadius: 18, borderTopRightRadius: 18, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 14, paddingTop: 8 },
-  grabber: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, marginBottom: 8 },
+  sheet: { borderTopLeftRadius: 18, borderTopRightRadius: 18, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 14 },
+  grabZone: { alignItems: 'center', paddingTop: 8, paddingBottom: 6 },
+  grabber: { width: 40, height: 5, borderRadius: 3 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 18 },
+  body: { flex: 1 },
   search: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, height: 38, borderRadius: 10, borderWidth: 1, marginBottom: 6 },
   searchInput: { flex: 1, fontSize: 14, paddingVertical: 0 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9 },

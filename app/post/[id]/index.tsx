@@ -3,75 +3,60 @@ import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { CommentSheet } from '@/components/comments/comment-sheet';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { ActionMenu } from '@/components/ui/action-menu';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/use-theme';
-import { signMediaPaths } from '@/lib/media';
-import { supabase } from '@/lib/supabase';
-
-type PostView = {
-  id: string;
-  media_url: string;
-  media_type: 'image' | 'video';
-  caption: string | null;
-  comment_count: number;
-  handle: string;
-  display_name: string;
-};
+import { formatCount } from '@/lib/format';
+import { getPostDetail, POST_REPORT_REASONS, reportPost, type PostDetail } from '@/lib/posts';
 
 export default function PostViewScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [post, setPost] = useState<PostView | null>(null);
+  const [post, setPost] = useState<PostDetail | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'missing' | 'error'>('loading');
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [commentCount, setCommentCount] = useState(0);
+  const [reportOpen, setReportOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
     setStatus('loading');
-    const { data, error } = await supabase
-      .from('posts')
-      .select(
-        'id, media_url, media_type, caption, comment_count, profiles!posts_user_id_fkey(handle, display_name)',
-      )
-      .eq('id', id)
-      .maybeSingle();
-    if (error) {
+    try {
+      const data = await getPostDetail(id);
+      if (!data) {
+        setStatus('missing'); // RLS hides posts you can't see
+        return;
+      }
+      setPost(data);
+      setCommentCount(data.comment_count);
+      setStatus('ready');
+    } catch {
       setStatus('error');
-      return;
     }
-    if (!data) {
-      setStatus('missing');
-      return;
-    } // RLS hides posts you can't see
-    const row = data as unknown as PostView & {
-      profiles: { handle: string; display_name: string };
-    };
-    const signed = await signMediaPaths([row.media_url]);
-    setPost({
-      ...row,
-      media_url: signed.get(row.media_url) ?? row.media_url,
-      handle: row.profiles.handle,
-      display_name: row.profiles.display_name,
-    });
-    setCommentCount(row.comment_count);
-    setStatus('ready');
   }, [id]);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- mount data-loader
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount data-loader; sets loading/error state internally
     void load();
   }, [load]);
+
+  const doReport = (reason: string) => {
+    if (!post) return;
+    reportPost(post.id, reason)
+      .then(() => Alert.alert('Thanks for reporting', 'Our team will review this post.'))
+      .catch(() => Alert.alert("Couldn't report", 'Please try again in a moment.'));
+  };
 
   if (status === 'loading')
     return (
       <ThemedView style={styles.center}>
+        <Stack.Screen options={{ headerShown: true, title: 'Post' }} />
         <ActivityIndicator color={theme.textSecondary} />
       </ThemedView>
     );
@@ -89,18 +74,58 @@ export default function PostViewScreen() {
 
   return (
     <ThemedView style={styles.fill}>
-      <Stack.Screen options={{ headerShown: true, title: `@${post.handle}` }} />
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: `@${post.handle}`,
+          headerRight: () => (
+            <Pressable
+              onPress={() => setReportOpen(true)}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Report this post">
+              <Ionicons name="flag-outline" size={20} color={theme.text} />
+            </Pressable>
+          ),
+        }}
+      />
       <ScrollView contentContainerStyle={styles.content}>
         {post.media_type === 'video' ? (
           <PostVideo uri={post.media_url} />
         ) : (
           <Image source={{ uri: post.media_url }} style={styles.media} contentFit="cover" />
         )}
+
+        {/* Likes · skips · comments */}
+        <View style={styles.stats}>
+          <Stat icon="heart" value={post.like_count} tint={theme.tint} />
+          <Stat icon="close" value={post.skip_count} tint={theme.textSecondary} />
+          <Stat icon="chatbubble-outline" value={commentCount} tint={theme.textSecondary} />
+        </View>
+
         {post.caption ? (
           <ThemedText type="default" style={styles.caption}>
             {post.caption}
           </ThemedText>
         ) : null}
+
+        {post.tags.length > 0 ? (
+          <View style={styles.tagRow}>
+            {post.tags.map((t) => (
+              <Pressable
+                key={t}
+                onPress={() => router.push({ pathname: '/tag/[name]', params: { name: t } })}
+                accessibilityRole="button"
+                accessibilityLabel={`See the ${t} tag`}
+                style={[styles.tag, { backgroundColor: theme.backgroundElement }]}>
+                <ThemedText type="small" style={{ color: theme.tint }}>
+                  #{t}
+                </ThemedText>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+
         <Pressable
           onPress={() => setCommentsOpen(true)}
           accessibilityRole="button"
@@ -121,7 +146,31 @@ export default function PostViewScreen() {
           onCountDelta={(d) => setCommentCount((c) => Math.max(0, c + d))}
         />
       ) : null}
+
+      <ActionMenu
+        visible={reportOpen}
+        title="Report this post"
+        onClose={() => setReportOpen(false)}
+        options={POST_REPORT_REASONS.map((r) => ({ label: r, onPress: () => doReport(r) }))}
+      />
     </ThemedView>
+  );
+}
+
+function Stat({
+  icon,
+  value,
+  tint,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  value: number;
+  tint: string;
+}) {
+  return (
+    <View style={styles.stat}>
+      <Ionicons name={icon} size={18} color={tint} />
+      <ThemedText type="smallBold">{formatCount(value)}</ThemedText>
+    </View>
   );
 }
 
@@ -139,7 +188,11 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 },
   content: { padding: 16, gap: 14 },
   media: { width: '100%', aspectRatio: 4 / 5, borderRadius: 16, backgroundColor: '#000' },
+  stats: { flexDirection: 'row', gap: 20 },
+  stat: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   caption: {},
+  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tag: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
   commentsBtn: {
     flexDirection: 'row',
     alignItems: 'center',

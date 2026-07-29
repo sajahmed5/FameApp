@@ -205,9 +205,7 @@ export default function PublicProfileScreen() {
         onRetry={load}
         header={header}
         locked={overview.locked}
-        onPressPost={() => {
-          /* read-only viewer for others' posts is a future addition */
-        }}
+        onPressPost={(p) => router.push(`/post/${p.id}`)}
       />
     </ThemedView>
   );

@@ -52,6 +52,10 @@ export default function TabsLayout() {
           title: 'Camera',
           tabBarLabel: () => null,
           tabBarButton: (props) => <CameraTabButton {...props} />,
+          // Immersive capture: no header, no tab bar — the camera UI has its own controls
+          // (close, flash, flip) and fills the screen. Exit via the in-screen X button.
+          headerShown: false,
+          tabBarStyle: { display: 'none' },
         }}
       />
 

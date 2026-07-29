@@ -9,7 +9,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -124,13 +123,30 @@ export default function ComposeScreen() {
             <Counter value={draft.altText.length} max={ALT_MAX} />
           </View>
 
-          {/* Visibility */}
-          <ToggleRow
-            title="Private post"
-            subtitle="Only your accepted followers can see it."
-            value={draft.visibility === 'private'}
-            onValueChange={(v) => updateDraft({ visibility: v ? 'private' : 'public' })}
-          />
+          {/* Visibility — a clear Public / Private choice (defaults to your profile's
+              setting). */}
+          <View style={[styles.visRow, { borderColor: theme.border }]}>
+            <ThemedText type="smallBold">Who can see this?</ThemedText>
+            <View style={[styles.segment, { borderColor: theme.border }]}>
+              <VisOption
+                label="Public"
+                icon="earth"
+                active={draft.visibility === 'public'}
+                onPress={() => updateDraft({ visibility: 'public' })}
+              />
+              <VisOption
+                label="Private"
+                icon="lock-closed"
+                active={draft.visibility === 'private'}
+                onPress={() => updateDraft({ visibility: 'private' })}
+              />
+            </View>
+            <ThemedText type="small" themeColor="textSecondary">
+              {draft.visibility === 'private'
+                ? 'Only your accepted followers can see it.'
+                : 'Anyone can discover this in the deck.'}
+            </ThemedText>
+          </View>
 
           {/* Location — off by default. Uses the photo's GPS or the device's, then offers
               nearby places to tag; stores only a coarse area. */}
@@ -247,37 +263,29 @@ function Counter({ value, max }: { value: number; max: number }) {
   );
 }
 
-function ToggleRow({
-  title,
-  subtitle,
-  value,
-  onValueChange,
-  disabled,
-  disabledNote,
+function VisOption({
+  label,
+  icon,
+  active,
+  onPress,
 }: {
-  title: string;
-  subtitle: string;
-  value: boolean;
-  onValueChange: (v: boolean) => void;
-  disabled?: boolean;
-  disabledNote?: string;
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  active: boolean;
+  onPress: () => void;
 }) {
   const theme = useTheme();
   return (
-    <View style={[styles.toggleRow, { borderColor: theme.border }]}>
-      <View style={styles.toggleText}>
-        <ThemedText type="smallBold">{title}</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          {disabled && disabledNote ? disabledNote : subtitle}
-        </ThemedText>
-      </View>
-      <Switch
-        value={value}
-        onValueChange={onValueChange}
-        disabled={disabled}
-        trackColor={{ true: BRAND.accent }}
-      />
-    </View>
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      style={[styles.segOption, active && { backgroundColor: BRAND.accent }]}>
+      <Ionicons name={icon} size={16} color={active ? BRAND.onAccent : theme.text} />
+      <ThemedText type="smallBold" style={{ color: active ? BRAND.onAccent : theme.text }}>
+        {label}
+      </ThemedText>
+    </Pressable>
   );
 }
 
@@ -312,16 +320,21 @@ const styles = StyleSheet.create({
   retakeText: { color: '#fff' },
   multiline: { minHeight: 72, textAlignVertical: 'top' },
   counter: { alignSelf: 'flex-end', marginTop: 4 },
-  toggleRow: {
+  visRow: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, padding: 14, gap: 10 },
+  segment: {
+    flexDirection: 'row',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  segOption: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 12,
-    padding: 14,
-    gap: 12,
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
   },
-  toggleText: { flex: 1, gap: 2 },
   uploadWrap: { gap: 6 },
   progressTrack: { height: 6, borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: 6, borderRadius: 3 },

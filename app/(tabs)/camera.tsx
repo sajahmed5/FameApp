@@ -256,7 +256,11 @@ export default function CameraScreen() {
           <View style={styles.spacer} />
         </View>
         <ThemedText type="small" style={styles.hint}>
-          {mode === 'video' ? 'Hold to record · 60s max' : 'Tap to capture'}
+          {mode === 'video'
+            ? recording
+              ? 'Tap to stop'
+              : 'Tap to record · 60s max'
+            : 'Tap to capture'}
         </ThemedText>
       </View>
     </View>
@@ -352,13 +356,16 @@ function ShutterButton({
   onStopVideo: () => void;
 }) {
   const isVideo = mode === 'video';
+  // Tap to toggle recording — press-and-hold doesn't work on the web app (and is
+  // fiddly on touch). Tap once to start, tap again to stop.
+  const onPress = isVideo ? (recording ? onStopVideo : onStartVideo) : onPressPhoto;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={isVideo ? 'Hold to record' : 'Capture photo'}
-      onPress={isVideo ? undefined : onPressPhoto}
-      onPressIn={isVideo ? onStartVideo : undefined}
-      onPressOut={isVideo ? onStopVideo : undefined}
+      accessibilityLabel={
+        isVideo ? (recording ? 'Stop recording' : 'Start recording') : 'Capture photo'
+      }
+      onPress={onPress}
       disabled={busy}
       style={styles.shutterOuter}>
       <View style={[styles.shutterRing, recording && styles.shutterRingRecording]} />

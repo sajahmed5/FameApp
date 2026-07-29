@@ -85,6 +85,8 @@ export default function ProfileScreen() {
       <VerifyEmailBanner />
       <ProfileHeader
         profile={overview}
+        points={authProfile?.points_balance ?? 0}
+        onPressPoints={() => router.push('/points')}
         onPressFollowers={() => goConnections('followers')}
         onPressFollowing={() => goConnections('following')}
         action={

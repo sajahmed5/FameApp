@@ -8,19 +8,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/use-theme';
-import {
-  PAGE,
-  followTag,
-  getTagMeta,
-  searchPostsByTag,
-  unfollowTag,
-  type SearchPost,
-  type TagMeta,
-} from '@/lib/search';
+import { PAGE, getTagMeta, searchPostsByTag, type SearchPost, type TagMeta } from '@/lib/search';
 
 /**
- * Tag page: name, post count, a grid of recent posts, and a follow button.
- * Following weights the tag into user_tags, which nudges the Home deck.
+ * Tag page: name, post count, and a grid of recent posts. Tap a post to swipe through
+ * everything with this tag. Tags aren't followed — this is a browse/discover surface.
  */
 export default function TagPage() {
   const { name } = useLocalSearchParams<{ name: string }>();
@@ -34,7 +26,6 @@ export default function TagPage() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
-  const [busy, setBusy] = useState(false);
   const offset = useRef(0);
 
   useEffect(() => {
@@ -71,21 +62,6 @@ export default function TagPage() {
     }
   }, [loadingMore, hasMore, name]);
 
-  const toggleFollow = async () => {
-    if (!meta || busy) return;
-    setBusy(true);
-    const prev = meta.is_following;
-    setMeta({ ...meta, is_following: !prev });
-    try {
-      if (prev) await unfollowTag(name);
-      else await followTag(name);
-    } catch {
-      setMeta((m) => (m ? { ...m, is_following: prev } : m));
-    } finally {
-      setBusy(false);
-    }
-  };
-
   return (
     <ThemedView style={{ flex: 1, paddingTop: insets.top }}>
       <View style={styles.header}>
@@ -107,20 +83,9 @@ export default function TagPage() {
             <View style={{ flex: 1 }}>
               <ThemedText type="title">#{name}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                {(meta?.post_count ?? 0).toLocaleString()} {meta?.post_count === 1 ? 'post' : 'posts'}
+                {(meta?.post_count ?? 0).toLocaleString()} {meta?.post_count === 1 ? 'post' : 'posts'} · tap a post to swipe
               </ThemedText>
             </View>
-            <Pressable
-              onPress={toggleFollow}
-              disabled={busy || !meta}
-              style={[
-                styles.followBtn,
-                meta?.is_following ? { borderColor: theme.border } : { backgroundColor: theme.tint, borderColor: theme.tint },
-              ]}>
-              <ThemedText type="small" style={{ color: meta?.is_following ? theme.text : '#fff', fontWeight: '700' }}>
-                {meta?.is_following ? 'Following' : 'Follow'}
-              </ThemedText>
-            </Pressable>
           </View>
         }
         renderItem={({ item, index }) => (

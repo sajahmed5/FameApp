@@ -9,19 +9,28 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/use-theme';
 import { createGroup, startDirect } from '@/lib/messages';
-import { searchAccounts, type AccountHit } from '@/lib/search';
+import { getShareTargets, type SharePerson } from '@/lib/share';
+import { searchAccounts } from '@/lib/search';
 
 export default function NewMessageScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const [mode, setMode] = useState<'direct' | 'group'>('direct');
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<AccountHit[]>([]);
-  const [selected, setSelected] = useState<AccountHit[]>([]);
+  const [results, setResults] = useState<SharePerson[]>([]);
+  const [defaults, setDefaults] = useState<SharePerson[]>([]); // friends shown before you type
+  const [selected, setSelected] = useState<SharePerson[]>([]);
   const [groupName, setGroupName] = useState('');
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const rid = useRef(0);
+
+  // Default (no query): people you follow / can message, so you're not staring at a blank.
+  useEffect(() => {
+    getShareTargets()
+      .then((t) => setDefaults(t.people))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(async () => {
@@ -44,7 +53,7 @@ export default function NewMessageScreen() {
     return () => clearTimeout(t);
   }, [query]);
 
-  const pickDirect = useCallback(async (a: AccountHit) => {
+  const pickDirect = useCallback(async (a: SharePerson) => {
     if (busy) return;
     setBusy(true);
     try {
@@ -56,7 +65,7 @@ export default function NewMessageScreen() {
     }
   }, [busy]);
 
-  const toggleSelect = useCallback((a: AccountHit) => {
+  const toggleSelect = useCallback((a: SharePerson) => {
     setSelected((prev) => (prev.some((s) => s.id === a.id) ? prev.filter((s) => s.id !== a.id) : [...prev, a]));
   }, []);
 
@@ -112,9 +121,16 @@ export default function NewMessageScreen() {
         <ActivityIndicator style={{ padding: 16 }} color={theme.textSecondary} />
       ) : (
         <FlatList
-          data={results}
+          data={query.trim() ? results : defaults}
           keyExtractor={(a) => a.id}
           keyboardShouldPersistTaps="handled"
+          ListHeaderComponent={
+            !query.trim() && defaults.length > 0 ? (
+              <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionHead}>
+                PEOPLE YOU FOLLOW
+              </ThemedText>
+            ) : null
+          }
           renderItem={({ item }) => {
             const isSel = selected.some((s) => s.id === item.id);
             return (
@@ -134,7 +150,11 @@ export default function NewMessageScreen() {
               </Pressable>
             );
           }}
-          ListEmptyComponent={query.trim() ? <ThemedText type="small" themeColor="textSecondary" style={{ padding: 16, textAlign: 'center' }}>No people found.</ThemedText> : null}
+          ListEmptyComponent={
+            <ThemedText type="small" themeColor="textSecondary" style={{ padding: 16, textAlign: 'center' }}>
+              {query.trim() ? 'No people found.' : 'Search for anyone by name or @handle to message them.'}
+            </ThemedText>
+          }
         />
       )}
 
@@ -153,6 +173,7 @@ const styles = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 12, paddingBottom: 8 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
   search: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 12, marginBottom: 8, paddingHorizontal: 10, height: 40, borderRadius: 10, borderWidth: 1 },
+  sectionHead: { paddingHorizontal: 16, paddingTop: 6, paddingBottom: 4 },
   searchInput: { flex: 1, fontSize: 15, paddingVertical: 0 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 10 },
   avatar: { width: 44, height: 44, borderRadius: 22 },

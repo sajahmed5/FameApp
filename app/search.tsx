@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/use-theme';
-import { fetchDeck, type DeckCard } from '@/lib/deck';
+import { fetchDiscover, type DeckCard } from '@/lib/deck';
 import { resolveDeckMedia } from '@/lib/media';
 import {
   ACCOUNTS_PAGE,
@@ -24,7 +24,6 @@ import {
   addRecentSearch,
   clearRecentSearches,
   followAccount,
-  followTag,
   geocodePlaces,
   getRecentSearches,
   getSearchSettings,
@@ -36,7 +35,6 @@ import {
   setSearchRadius,
   trendingTags,
   unfollowAccount,
-  unfollowTag,
   type AccountHit,
   type GeoPlace,
   type RecentSearch,
@@ -565,22 +563,7 @@ function TagsList({
 
 function TagRow({ tag, onOpen }: { tag: TagHit; onOpen: (name: string) => void }) {
   const theme = useTheme();
-  const [following, setFollowing] = useState(tag.is_following);
-  const [busy, setBusy] = useState(false);
-  const toggle = async () => {
-    if (busy) return;
-    setBusy(true);
-    const prev = following;
-    setFollowing(!prev);
-    try {
-      if (prev) await unfollowTag(tag.name);
-      else await followTag(tag.name);
-    } catch {
-      setFollowing(prev);
-    } finally {
-      setBusy(false);
-    }
-  };
+  // Tags aren't "followed" — tapping a tag opens its posts (then tap a post to swipe).
   return (
     <Pressable onPress={() => onOpen(tag.name)} style={[styles.tagRow, { borderColor: theme.border }]}>
       <View style={[styles.tagIcon, { backgroundColor: theme.backgroundSelected }]}>
@@ -596,14 +579,7 @@ function TagRow({ tag, onOpen }: { tag: TagHit; onOpen: (name: string) => void }
           {tag.usage_count} {tag.usage_count === 1 ? 'post' : 'posts'}
         </ThemedText>
       </View>
-      <Pressable
-        onPress={toggle}
-        disabled={busy}
-        style={[styles.followBtn, following ? { borderColor: theme.border } : { backgroundColor: theme.tint, borderColor: theme.tint }]}>
-        <ThemedText type="small" style={{ color: following ? theme.text : '#fff', fontWeight: '700' }}>
-          {following ? 'Following' : 'Follow'}
-        </ThemedText>
-      </Pressable>
+      <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
     </Pressable>
   );
 }
@@ -639,10 +615,9 @@ function PostsGrid({
     return <EmptyState icon="location-outline" text="Set a place to search nearby — tap Change above." />;
   }
   if (empty) {
-    // Worldwide with no query → a "discover" grid of popular posts (get_deck: ranked by
-    // your top tags, broadened via the explore pool when there's little tag-matched content).
-    if (mode === 'worldwide') return <DiscoverGrid bottomInset={bottomInset} />;
-    return <EmptyState icon="search-outline" text="Search posts near your chosen area." />;
+    // No query → a "discover" grid of popular posts (ranked by your tag interests +
+    // recent popularity), so Worldwide/Local aren't blank before you type.
+    return <DiscoverGrid bottomInset={bottomInset} />;
   }
   if (data.length === 0) {
     return <EmptyState icon="sad-outline" text="No posts match that." />;
@@ -790,7 +765,7 @@ function DiscoverGrid({ bottomInset }: { bottomInset: number }) {
     let active = true;
     (async () => {
       try {
-        const batch = await resolveDeckMedia(await fetchDeck([], 30));
+        const batch = await resolveDeckMedia(await fetchDiscover(30));
         if (active) setItems(batch);
       } catch {
         if (active) setItems([]);

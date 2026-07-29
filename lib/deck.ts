@@ -31,6 +31,17 @@ export const DECK_BATCH_SIZE = 20;
  */
 export type FetchBatch = (exclude: string[], limit?: number) => Promise<DeckCard[]>;
 
+/**
+ * Popular/discover posts for browse surfaces (Search default). Unlike fetchDeck this does
+ * NOT exclude already-swiped posts, so it stays populated — ranked by tag affinity + recent
+ * popularity. Sign media with resolveDeckMedia before display.
+ */
+export async function fetchDiscover(limit = 30): Promise<DeckCard[]> {
+  const { data, error } = await supabase.rpc('get_discover', { _limit: limit });
+  if (error) throw error;
+  return (data ?? []) as DeckCard[];
+}
+
 /** Fetch a ranked batch, excluding posts already loaded into the client deck. */
 export async function fetchDeck(exclude: string[], limit = DECK_BATCH_SIZE): Promise<DeckCard[]> {
   const { data, error } = await supabase.rpc('get_deck', {

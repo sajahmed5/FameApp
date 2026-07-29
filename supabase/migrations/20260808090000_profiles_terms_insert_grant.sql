@@ -1,0 +1,14 @@
+-- Terms columns need INSERT, not just UPDATE.
+--
+-- The compliance migration (20260807090000) granted the app UPDATE on
+-- (terms_version, terms_accepted_at) but never INSERT. However the client writes
+-- both columns when it FIRST creates the profile row at signup — see
+-- auth-context.resolveProfile and app/(auth)/signup/identity.tsx, which carry the
+-- terms acceptance captured during signup. Because those columns were absent from
+-- the profiles INSERT column-grant, profile creation failed with:
+--     permission denied for table profiles
+-- which blocked every new signup from completing ("Finish setup" looped).
+--
+-- Grant INSERT on exactly those two columns (matching the existing UPDATE grant),
+-- so the client can record terms acceptance at profile-creation time.
+grant insert (terms_version, terms_accepted_at) on public.profiles to authenticated;

@@ -290,13 +290,14 @@ function VisOption({
 }
 
 function VideoPreview({ uri }: { uri: string }) {
+  // Native controls + no autoplay so it's playable/scrubbable (autoplay-with-no-controls
+  // left it black with no way to start it). 'contain' avoids cropping the frame to black.
   const player = useVideoPlayer(uri, (p) => {
     p.loop = true;
-    p.muted = true;
-    p.play();
+    p.muted = false;
   });
   return (
-    <VideoView player={player} style={styles.preview} contentFit="cover" nativeControls={false} />
+    <VideoView player={player} style={styles.preview} contentFit="contain" nativeControls />
   );
 }
 

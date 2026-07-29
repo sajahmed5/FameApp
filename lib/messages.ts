@@ -1,4 +1,5 @@
 import { isStoragePath, signMediaPaths } from '@/lib/media';
+import { awardMessageActivity } from '@/lib/points';
 import { supabase } from '@/lib/supabase';
 
 export type Conversation = {
@@ -121,6 +122,7 @@ export async function sendMessage(
     _reply_to_id: opts.replyToId ?? null,
   });
   if (error) throw error;
+  awardMessageActivity(cid); // reward messaging (server-capped ~5/day)
   return data as string;
 }
 export async function respondToRequest(cid: string, accept: boolean): Promise<void> {

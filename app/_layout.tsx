@@ -14,6 +14,7 @@ import { TERMS_VERSION } from '@/constants/legal';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { analytics, track } from '@/lib/analytics';
 import { loadMutePreference } from '@/lib/mute-preference';
+import { awardActiveDay } from '@/lib/points';
 import { AuthProvider, useAuth, type AuthStatus } from '@/lib/auth-context';
 import { NotificationsProvider } from '@/lib/notifications-provider';
 import { initSentry, Sentry } from '@/lib/sentry';
@@ -67,6 +68,16 @@ function RootNavigator() {
   useAuthGuard(status);
   const tutorialShown = useRef(false);
   const termsShown = useRef(false);
+  const activeDayFired = useRef(false);
+
+  // Award the once-per-day "active day" bonus the first time we reach a ready session
+  // this launch. Server-capped to 1/day, so this is safe/idempotent.
+  useEffect(() => {
+    if (status === 'ready' && !activeDayFired.current) {
+      activeDayFired.current = true;
+      awardActiveDay();
+    }
+  }, [status]);
 
   // Terms re-acceptance gate (takes priority over the tutorial): if the accepted terms
   // version is behind the current one, require re-acceptance once. New signups accept the

@@ -6,9 +6,11 @@
 // ============================================================================
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 
+import { withSentry } from '../_shared/sentry.ts';
+
 const SECRET = Deno.env.get('PUSH_WEBHOOK_SECRET') ?? '';
 
-Deno.serve(async (req) => {
+Deno.serve(withSentry('story-reaper', async (req) => {
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
   if (SECRET && req.headers.get('x-webhook-secret') !== SECRET) return json({ error: 'unauthorized' }, 401);
 
@@ -38,7 +40,7 @@ Deno.serve(async (req) => {
   if (delErr) return json({ error: delErr.message }, 500);
 
   return json({ deleted: ids.length, media_removed: keys.length });
-});
+}));
 
 function json(b: unknown, s = 200): Response {
   return new Response(JSON.stringify(b), { status: s, headers: { 'content-type': 'application/json' } });

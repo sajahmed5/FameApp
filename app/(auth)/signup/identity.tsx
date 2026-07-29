@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+import { track } from '@/lib/analytics';
 import { DateOfBirthField } from '@/components/date-of-birth-field';
 import { AuthScreen } from '@/components/ui/auth-screen';
 import { Button } from '@/components/ui/button';
@@ -148,6 +149,7 @@ export default function SignupIdentityScreen() {
         }
         return;
       }
+      track('signup_started');
       router.replace('/(auth)/signup/verify');
     } finally {
       setSubmitting(false);

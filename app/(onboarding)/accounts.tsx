@@ -5,6 +5,7 @@ import { SuggestedAccountCard } from '@/components/suggested-account-card';
 import { AuthScreen } from '@/components/ui/auth-screen';
 import { Button } from '@/components/ui/button';
 import { FormMessage } from '@/components/ui/form-message';
+import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
 import { useTheme } from '@/hooks/use-theme';
@@ -129,6 +130,7 @@ export default function OnboardingAccountsScreen() {
       setCompleting(false);
       return;
     }
+    track('onboarding_follows_complete');
     reload(); // → status 'ready' → root guard routes to (tabs)
   }
 

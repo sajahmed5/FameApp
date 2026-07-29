@@ -7,6 +7,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/use-theme';
+import { trackFirst } from '@/lib/analytics';
+import { useAuth } from '@/lib/auth-context';
 import type { Conversation } from '@/lib/messages';
 import { getShareTargets, postLink, sharePost, type SharePerson } from '@/lib/share';
 
@@ -25,6 +27,7 @@ export function ShareSheet({
 }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const [targets, setTargets] = useState<Target[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -76,6 +79,8 @@ export function ShareSheet({
       const conversationIds = [...selected].filter((k) => k.startsWith('c:')).map((k) => k.slice(2));
       const recipientIds = [...selected].filter((k) => k.startsWith('p:')).map((k) => k.slice(2));
       await sharePost(post.id, { conversationIds, recipientIds, message });
+      // Milestone only — never how many or to whom (recipients are a social-graph leak).
+      if (user?.id) void trackFirst(user.id, 'first_share');
       setSent(true);
       setTimeout(onClose, 700);
     } catch {
@@ -88,6 +93,7 @@ export function ShareSheet({
     const text = post.caption ? `${post.caption} — on Fame` : 'Check this out on Fame';
     try {
       await Share.share({ message: `${text} ${url}`, url });
+      if (user?.id) void trackFirst(user.id, 'first_share');
     } catch {
       /* dismissed */
     }

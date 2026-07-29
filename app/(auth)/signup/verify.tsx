@@ -6,6 +6,7 @@ import { ThemedText } from '@/components/themed-text';
 import { AuthScreen } from '@/components/ui/auth-screen';
 import { Button } from '@/components/ui/button';
 import { FormMessage } from '@/components/ui/form-message';
+import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth-context';
 import { useSignup } from '@/lib/signup-context';
 import { supabase } from '@/lib/supabase';
@@ -53,6 +54,7 @@ export default function SignupVerifyScreen() {
             password: draft.password,
           });
           if (!error && active) {
+            track('email_verified');
             reset(); // clear the in-memory password; guard now routes to tabs
             return;
           }

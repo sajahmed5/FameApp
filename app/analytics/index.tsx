@@ -1,4 +1,4 @@
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -16,6 +16,7 @@ import {
 
 export default function AnalyticsScreen() {
   const theme = useTheme();
+  const router = useRouter();
   const [account, setAccount] = useState<AccountAnalytics | null>(null);
   const [tags, setTags] = useState<TagReach[] | null>(null);
   const [error, setError] = useState(false);
@@ -148,6 +149,7 @@ export default function AnalyticsScreen() {
           <ThemedText type="small" themeColor="textSecondary">
             {pointsExplanation(account.points_balance, account.distribution_multiplier)}
           </ThemedText>
+          <Button title="How points work" variant="secondary" onPress={() => router.push('/points')} />
         </Section>
       </ScrollView>
     </ThemedView>

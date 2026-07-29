@@ -1,17 +1,24 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 // Importing GestureHandlerRootView here (the root layout expo-router loads first) also
 // registers react-native-gesture-handler's native side effects before any app code runs.
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { CameraCoachMark } from '@/components/camera-coach-mark';
 import { UploadBanner } from '@/components/upload-banner';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { analytics, track } from '@/lib/analytics';
 import { AuthProvider, useAuth, type AuthStatus } from '@/lib/auth-context';
 import { NotificationsProvider } from '@/lib/notifications-provider';
+import { initSentry, Sentry } from '@/lib/sentry';
 import { UploadManagerProvider } from '@/lib/upload-manager';
+
+// Initialise crash reporting as early as possible — before any component renders — so a
+// crash during startup is still captured. No-ops when no DSN is configured.
+initSentry();
 
 export const unstable_settings = {
   initialRouteName: '(tabs)',
@@ -55,14 +62,46 @@ function useAuthGuard(status: AuthStatus) {
 }
 
 function RootNavigator() {
-  const { status } = useAuth();
+  const { status, user, profile } = useAuth();
+  const router = useRouter();
   useAuthGuard(status);
+  const tutorialShown = useRef(false);
+
+  // First-run tutorial: once the user is fully onboarded, show it exactly once until
+  // `tutorial_complete` is persisted (see app/tutorial.tsx). The ref guards against a
+  // re-push while the profile round-trips.
+  useEffect(() => {
+    if (status === 'ready' && profile && !profile.tutorial_complete && !tutorialShown.current) {
+      tutorialShown.current = true;
+      router.push('/tutorial');
+    }
+  }, [status, profile, router]);
 
   useEffect(() => {
     // Keep the splash up until we know where to send the user, so protected screens
     // never flash before the guard redirects.
     if (status !== 'loading') SplashScreen.hideAsync();
   }, [status]);
+
+  // Start analytics once (honours the opt-out before any event fires) and emit a
+  // session_start. init() no-ops when opted out or no key is set.
+  useEffect(() => {
+    void analytics.init().then((on) => {
+      if (on) track('session_start');
+    });
+  }, []);
+
+  // Identify by user id ONLY once signed in; also set the Sentry user to just the id.
+  // Reset both on sign-out so identities never bleed across accounts.
+  useEffect(() => {
+    if (user?.id) {
+      analytics.identify(user.id);
+      Sentry.setUser({ id: user.id });
+    } else if (status === 'signedOut') {
+      analytics.reset();
+      Sentry.setUser(null);
+    }
+  }, [user?.id, status]);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
@@ -83,11 +122,16 @@ function RootNavigator() {
         name="post/[id]/edit"
         options={{ presentation: 'modal', headerShown: true, title: 'Edit post' }}
       />
+      <Stack.Screen
+        name="tutorial"
+        options={{ presentation: 'fullScreenModal', headerShown: false, gestureEnabled: false }}
+      />
+      <Stack.Screen name="points" options={{ headerShown: true, title: 'How points work' }} />
     </Stack>
   );
 }
 
-export default function RootLayout() {
+function RootLayout() {
   const colorScheme = useColorScheme();
 
   return (
@@ -99,6 +143,7 @@ export default function RootLayout() {
               <UploadManagerProvider>
                 <RootNavigator />
                 <UploadBanner />
+                <CameraCoachMark />
               </UploadManagerProvider>
             </NotificationsProvider>
           </AuthProvider>
@@ -108,3 +153,7 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+// Sentry.wrap adds an error boundary + touch/navigation breadcrumbs (all scrubbed by
+// beforeBreadcrumb) around the whole app.
+export default Sentry.wrap(RootLayout);

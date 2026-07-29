@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { trackFirst } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth-context';
 import {
   addComment,
@@ -211,11 +212,12 @@ export function useComments(postId: string, onCountDelta?: (delta: number) => vo
       try {
         const row = await addComment(postId, text, parentId ?? undefined);
         reconcile(optimistic.id, row, parentId);
+        if (user?.id) void trackFirst(user.id, 'first_comment'); // no post/comment id sent
       } catch {
         markFailed(optimistic.id, parentId);
       }
     },
-    [optimisticFrom, onCountDelta, postId, reconcile, markFailed, updateOne],
+    [optimisticFrom, onCountDelta, postId, reconcile, markFailed, updateOne, user?.id],
   );
 
   const retry = useCallback(

@@ -12,6 +12,8 @@
 // ============================================================================
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.45.4';
 
+import { reportError, withSentry } from '../_shared/sentry.ts';
+
 const PROVIDER = Deno.env.get('PLACES_PROVIDER') ?? 'google';
 const GOOGLE_KEY = Deno.env.get('GOOGLE_PLACES_API_KEY') ?? '';
 const RATE_MAX = Number(Deno.env.get('PLACES_CALLS_PER_HOUR') ?? 120);
@@ -122,7 +124,7 @@ function userClient(jwt: string): SupabaseClient {
   });
 }
 
-Deno.serve(async (req) => {
+Deno.serve(withSentry('places', async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
   if (PROVIDER === 'none' || !GOOGLE_KEY) return json({ error: 'places_not_configured' }, 501);
@@ -189,6 +191,7 @@ Deno.serve(async (req) => {
     return json({ error: 'unknown_action' }, 400);
   } catch (e) {
     console.error('[places] error', e);
+    await reportError(e);
     return json({ error: 'places_error', message: String(e instanceof Error ? e.message : e) }, 502);
   }
-});
+}));

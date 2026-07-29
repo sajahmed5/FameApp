@@ -28,6 +28,8 @@ import {
 } from './storage.ts';
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.45.4';
 
+import { reportError, withSentry } from '../_shared/sentry.ts';
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, content-type',
@@ -38,7 +40,7 @@ function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...CORS, 'content-type': 'application/json' } });
 }
 
-Deno.serve(async (req) => {
+Deno.serve(withSentry('media-pipeline', async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
 
@@ -172,9 +174,10 @@ Deno.serve(async (req) => {
   } catch (e) {
     await cleanupAll();
     console.error('[media-pipeline] failed:', e);
+    await reportError(e, { stage: 'image' });
     return json({ error: 'processing_failed', message: String(e instanceof Error ? e.message : e) }, 500);
   }
-});
+}));
 
 // ---------------------------------------------------------------------------
 // Video path — steps 3–6 happen in an external worker (see video.ts). In-edge
@@ -246,6 +249,7 @@ async function handleVideo(args: {
   } catch (e) {
     await cleanupAll();
     console.error('[media-pipeline] video failed:', e);
+    await reportError(e, { stage: 'video' });
     return json({ error: 'processing_failed', message: String(e instanceof Error ? e.message : e) }, 500);
   }
 }

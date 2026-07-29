@@ -95,6 +95,11 @@ export default function ProfileScreen() {
             onPress={() => router.push('/analytics')}
           />
           <ActionButton
+            icon="sparkles-outline"
+            label="Points"
+            onPress={() => router.push('/points')}
+          />
+          <ActionButton
             icon="person-add-outline"
             label="Requests"
             badge={requestCount}

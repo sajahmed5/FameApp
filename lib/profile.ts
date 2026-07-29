@@ -267,6 +267,16 @@ export async function setSearchRadius(miles: number): Promise<void> {
   if (error) throw error;
 }
 
+/** Mark the first-run tutorial finished so it never auto-shows again. */
+export async function markTutorialComplete(): Promise<void> {
+  const { data: u } = await supabase.auth.getUser();
+  const { error } = await supabase
+    .from('profiles')
+    .update({ tutorial_complete: true })
+    .eq('id', u.user!.id);
+  if (error) throw error;
+}
+
 // ---- Analytics -------------------------------------------------------------
 
 export type PostAnalytics = {

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
 import { FormMessage } from '@/components/ui/form-message';
 import { TextField } from '@/components/ui/text-field';
+import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
 import { useTheme } from '@/hooks/use-theme';
@@ -235,7 +236,10 @@ export default function OnboardingTagsScreen() {
       footer={
         <Button
           title={enough ? 'Continue' : `Select ${MIN_TAGS - selectedIds.length} more`}
-          onPress={() => router.push('/(onboarding)/accounts')}
+          onPress={() => {
+            track('onboarding_tags_complete', { tag_count: selectedIds.length });
+            router.push('/(onboarding)/accounts');
+          }}
           disabled={!enough}
         />
       }>

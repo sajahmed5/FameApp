@@ -17,6 +17,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BRAND } from '@/constants/config';
 import { useTheme } from '@/hooks/use-theme';
+import { analytics } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth-context';
 import {
   deleteAccount,
@@ -38,7 +39,14 @@ export default function SettingsScreen() {
   const [isPrivate, setIsPrivate] = useState(profile?.is_private ?? false);
   const [radius, setRadius] = useState(profile?.search_radius_miles ?? 5);
   const [prefs, setPrefs] = useState<NotificationPrefs | null>(null);
+  const [shareUsage, setShareUsage] = useState(!analytics.isOptedOut());
   const [busy, setBusy] = useState<string | null>(null);
+
+  async function toggleUsage(v: boolean) {
+    setShareUsage(v);
+    // value ON = analytics enabled; OFF = opted out. Honoured before any event fires.
+    await analytics.setOptOut(!v);
+  }
 
   const loadPrefs = useCallback(async () => {
     setPrefs(await getNotificationPrefs().catch(() => null));
@@ -136,6 +144,12 @@ export default function SettingsScreen() {
             value={isPrivate}
             onValueChange={togglePrivacy}
           />
+          <ToggleRow
+            label="Share anonymous usage data"
+            sublabel="Helps improve Fame. Never your identity, and never which posts you swipe."
+            value={shareUsage}
+            onValueChange={toggleUsage}
+          />
         </Group>
 
         <Group title="Discovery">
@@ -204,6 +218,19 @@ export default function SettingsScreen() {
               />
             </>
           )}
+        </Group>
+
+        <Group title="Help">
+          <LinkRow
+            icon="sparkles-outline"
+            label="How points work"
+            onPress={() => router.push('/points')}
+          />
+          <LinkRow
+            icon="play-circle-outline"
+            label="Replay tutorial"
+            onPress={() => router.push('/tutorial')}
+          />
         </Group>
 
         <Group title="Safety">

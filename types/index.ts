@@ -9,6 +9,12 @@
 export type AppExtra = {
   supabaseUrl?: string;
   supabaseAnonKey?: string;
+  /** Sentry DSN (a publishable client key). Empty → crash reporting disabled. */
+  sentryDsn?: string;
+  /** PostHog project API key (publishable). Empty → analytics disabled/no-op. */
+  posthogKey?: string;
+  /** PostHog ingestion host, e.g. https://eu.i.posthog.com. */
+  posthogHost?: string;
 };
 
 /** Coarse age band derived server-side from date of birth. */
@@ -28,6 +34,8 @@ export type Profile = {
   points_lifetime: number;
   search_radius_miles: number;
   onboarding_complete: boolean;
+  /** First-run tutorial finished (or skipped) — stops it ever showing again. */
+  tutorial_complete: boolean;
   created_at: string;
   updated_at: string;
 };

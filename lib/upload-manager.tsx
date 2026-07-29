@@ -8,6 +8,9 @@ import {
   type ReactNode,
 } from 'react';
 
+import { trackFirst } from '@/lib/analytics';
+import { useAuth } from '@/lib/auth-context';
+import { dismissCameraCoach } from '@/lib/coach-marks';
 import {
   createPost,
   uploadToPipeline,
@@ -63,6 +66,7 @@ let counter = 0;
 const nextId = () => `comp_${Date.now()}_${counter++}`;
 
 export function UploadManagerProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [composition, setComposition] = useState<Composition | null>(null);
   const ref = useRef<Composition | null>(null);
   const abortRef = useRef<(() => void) | null>(null);
@@ -89,6 +93,8 @@ export function UploadManagerProvider({ children }: { children: ReactNode }) {
         attachLocation: c.draft.attachLocation,
         tags: c.draft.tags,
       });
+      if (user?.id) void trackFirst(user.id, 'first_post'); // milestone only, no post id/media
+      void dismissCameraCoach(); // first post made → the camera nudge is no longer needed
       set((x) => ({ ...x, posting: false, postedId: id }));
     } catch (e) {
       set((x) => ({
@@ -97,7 +103,7 @@ export function UploadManagerProvider({ children }: { children: ReactNode }) {
         postError: e instanceof Error ? e.message : 'Could not post.',
       }));
     }
-  }, [set]);
+  }, [set, user?.id]);
 
   const runPipeline = useCallback(
     (id: string) => {

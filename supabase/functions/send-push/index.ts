@@ -14,6 +14,8 @@
 // ============================================================================
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 
+import { reportError, withSentry } from '../_shared/sentry.ts';
+
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 
 // notification type → preference category. 'moderation' has no toggle (always sent).
@@ -34,7 +36,7 @@ type Notification = {
   post_id: string | null; comment_id: string | null; count: number; payload: Record<string, unknown>;
 };
 
-Deno.serve(async (req) => {
+Deno.serve(withSentry('send-push', async (req) => {
   if (req.method !== 'POST') return new Response('method_not_allowed', { status: 405 });
 
   // Only the DB dispatch trigger may call this.
@@ -110,9 +112,10 @@ Deno.serve(async (req) => {
     return json({ sent: messages.length, pruned: dead.length });
   } catch (e) {
     console.error('[send-push] expo error', e);
+    await reportError(e);
     return json({ error: 'send_failed' }, 502);
   }
-});
+}));
 
 function compose(n: Notification, actor: string): { title: string; body: string } {
   const at = actor ? `@${actor}` : 'Someone';

@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { track, trackFirst } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth-context';
 import { DECK_BATCH_SIZE, type DeckCard, type FetchBatch, type SwipeDirection } from '@/lib/deck';
 import { resolveDeckMedia } from '@/lib/media';
@@ -43,6 +44,20 @@ export function useDeck(fetchBatch: FetchBatch): UseDeck {
   const loadedIds = useRef<Set<string>>(new Set());
   const fetchingMore = useRef(false);
   const queueRef = useRef<SwipeQueue | null>(null);
+  // Mirror state into refs so analytics can fire OUTSIDE the setState updaters (keeping
+  // updaters pure and dodging double-fires under StrictMode / concurrent rendering).
+  const cardsRef = useRef<DeckCard[]>([]);
+  const lastSwipedRef = useRef<DeckCard | null>(null);
+  useEffect(() => {
+    cardsRef.current = cards;
+  }, [cards]);
+  useEffect(() => {
+    lastSwipedRef.current = lastSwiped;
+  }, [lastSwiped]);
+  // deck_exhausted: emit once per transition into the exhausted state.
+  useEffect(() => {
+    if (status === 'exhausted') track('deck_exhausted');
+  }, [status]);
 
   const prefetchMedia = useCallback((list: DeckCard[]) => {
     for (const card of list.slice(0, PREFETCH_AHEAD)) {
@@ -75,6 +90,8 @@ export function useDeck(fetchBatch: FetchBatch): UseDeck {
       const batch = await fetchBatch([...loadedIds.current]);
       const fresh = await resolveDeckMedia(batch.filter((c) => !loadedIds.current.has(c.id)));
       fresh.forEach((c) => loadedIds.current.add(c.id));
+      // Aggregate count only — never which cards, never who they're for.
+      track('batch_refetch', { size: fresh.length });
       if (fresh.length) {
         setCards((prev) => {
           const next = [...prev, ...fresh];
@@ -115,6 +132,12 @@ export function useDeck(fetchBatch: FetchBatch): UseDeck {
 
   const swipe = useCallback(
     (direction: SwipeDirection) => {
+      // Emit BEFORE mutating state. `direction` only — NEVER the post id, so no
+      // post↔swiper pair can ever be reconstructed by the analytics backend.
+      if (cardsRef.current.length > 0) {
+        track('swipe', { direction });
+        if (uid) void trackFirst(uid, 'first_swipe');
+      }
       setCards((prev) => {
         if (prev.length === 0) return prev;
         const [top, ...rest] = prev;
@@ -130,6 +153,7 @@ export function useDeck(fetchBatch: FetchBatch): UseDeck {
   );
 
   const undo = useCallback(() => {
+    if (lastSwipedRef.current) track('undo_used');
     setLastSwiped((prev) => {
       if (!prev) return null;
       queueRef.current?.enqueueUndo(prev.id);

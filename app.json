@@ -13,7 +13,7 @@
       "icon": "./assets/expo.icon",
       "supportsTablet": true,
       "bundleIdentifier": "com.fameapp.fame",
-      "associatedDomains": ["applinks:lovefame.co.uk"]
+      "associatedDomains": ["applinks:lovefame.co.uk", "applinks:www.lovefame.co.uk"]
     },
     "android": {
       "package": "com.fameapp.fame",
@@ -28,13 +28,19 @@
         {
           "action": "VIEW",
           "autoVerify": true,
-          "data": [{ "scheme": "https", "host": "lovefame.co.uk", "pathPrefix": "/post" }],
+          "data": [
+            { "scheme": "https", "host": "lovefame.co.uk", "pathPrefix": "/post" },
+            { "scheme": "https", "host": "www.lovefame.co.uk", "pathPrefix": "/post" }
+          ],
           "category": ["BROWSABLE", "DEFAULT"]
         },
         {
           "action": "VIEW",
           "autoVerify": true,
-          "data": [{ "scheme": "https", "host": "lovefame.co.uk", "pathPrefix": "/u" }],
+          "data": [
+            { "scheme": "https", "host": "lovefame.co.uk", "pathPrefix": "/u" },
+            { "scheme": "https", "host": "www.lovefame.co.uk", "pathPrefix": "/u" }
+          ],
           "category": ["BROWSABLE", "DEFAULT"]
         }
       ]
@@ -73,13 +79,13 @@
       [
         "expo-notifications",
         {
-          "color": "#208AEF"
+          "color": "#C85A28"
         }
       ],
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#C85A28",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }

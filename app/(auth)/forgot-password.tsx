@@ -1,7 +1,9 @@
 import { useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { useState } from 'react';
+import { Pressable, StyleSheet } from 'react-native';
 
+import { ThemedText } from '@/components/themed-text';
 import { AuthScreen } from '@/components/ui/auth-screen';
 import { Button } from '@/components/ui/button';
 import { FormMessage } from '@/components/ui/form-message';
@@ -81,6 +83,14 @@ export default function ForgotPasswordScreen() {
         returnKeyType="go"
         onSubmitEditing={onSubmit}
       />
+
+      <Pressable onPress={() => router.push('/recover')} style={styles.recoverLink}>
+        <ThemedText type="linkPrimary">Lost access to your email?</ThemedText>
+      </Pressable>
     </AuthScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  recoverLink: { alignSelf: 'center', paddingVertical: 8 },
+});

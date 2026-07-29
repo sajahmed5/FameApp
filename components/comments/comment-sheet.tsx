@@ -295,19 +295,22 @@ export function CommentSheet({
       <ActionMenu
         visible={!!reportTarget}
         title="Report this comment"
-        options={REPORT_REASONS.map((reason) => ({
-          label: reason,
-          onPress: async () => {
-            const target = reportTarget;
-            if (!target) return;
-            try {
-              await c.report(target, reason);
-              setNotice('Thanks — this comment was reported.');
-            } catch {
-              setNotice("Couldn't submit the report.");
-            }
-          },
-        }))}
+        options={[
+          ...REPORT_REASONS.map((reason) => ({
+            label: reason,
+            onPress: async () => {
+              const target = reportTarget;
+              if (!target) return;
+              try {
+                await c.report(target, reason);
+                setNotice('Thanks — this comment was reported.');
+              } catch {
+                setNotice("Couldn't submit the report.");
+              }
+            },
+          })),
+          { label: 'Review Community Guidelines', onPress: () => router.push('/legal/guidelines') },
+        ]}
         onClose={() => setReportTarget(null)}
       />
     </View>

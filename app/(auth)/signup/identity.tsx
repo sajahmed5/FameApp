@@ -1,15 +1,18 @@
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { track } from '@/lib/analytics';
 import { DateOfBirthField } from '@/components/date-of-birth-field';
+import { ThemedText } from '@/components/themed-text';
 import { AuthScreen } from '@/components/ui/auth-screen';
 import { Button } from '@/components/ui/button';
 import { FormMessage } from '@/components/ui/form-message';
 import { TextField } from '@/components/ui/text-field';
+import { BRAND } from '@/constants/config';
+import { TERMS_VERSION } from '@/constants/legal';
 import { useAuth } from '@/lib/auth-context';
 import { useSignup } from '@/lib/signup-context';
 import { supabase } from '@/lib/supabase';
@@ -26,6 +29,7 @@ const TODAY = new Date();
 
 export default function SignupIdentityScreen() {
   const router = useRouter();
+  const theme = useTheme();
   const { draft, update, reset } = useSignup();
   const { session, reload } = useAuth();
 
@@ -91,11 +95,14 @@ export default function SignupIdentityScreen() {
           ? "Couldn't check that handle. Try again."
           : null;
 
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+
   const canSubmit =
     !validateDisplayName(displayName) &&
     availability === 'available' &&
     !!dob &&
-    dobState !== 'under13';
+    dobState !== 'under13' &&
+    acceptedTerms;
 
   async function onSubmit() {
     setTouched({ name: true, handle: true, dob: true });
@@ -115,6 +122,8 @@ export default function SignupIdentityScreen() {
           display_name: displayName.trim(),
           date_of_birth: isoDob,
           is_private: isPrivate,
+          terms_version: TERMS_VERSION,
+          terms_accepted_at: new Date().toISOString(),
         });
         if (error) {
           if (error.code === '23505') setCheckResult({ handle, result: 'taken' });
@@ -138,6 +147,8 @@ export default function SignupIdentityScreen() {
             display_name: displayName.trim(),
             handle,
             date_of_birth: isoDob,
+            terms_version: TERMS_VERSION,
+            terms_accepted_at: new Date().toISOString(),
           } satisfies SignupIdentityMetadata,
         },
       });
@@ -219,9 +230,37 @@ export default function SignupIdentityScreen() {
           settings later.
         </FormMessage>
       ) : null}
+
+      <Pressable
+        style={styles.termsRow}
+        onPress={() => setAcceptedTerms((v) => !v)}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: acceptedTerms }}>
+        <Ionicons
+          name={acceptedTerms ? 'checkbox' : 'square-outline'}
+          size={24}
+          color={acceptedTerms ? BRAND.accent : theme.textSecondary}
+        />
+        <ThemedText type="small" style={styles.termsText}>
+          I agree to the{' '}
+          <ThemedText type="small" style={{ color: BRAND.accent }} onPress={() => router.push('/legal/terms')}>
+            Terms of Service
+          </ThemedText>{' '}
+          and{' '}
+          <ThemedText type="small" style={{ color: BRAND.accent }} onPress={() => router.push('/legal/privacy')}>
+            Privacy Policy
+          </ThemedText>
+          .
+        </ThemedText>
+      </Pressable>
     </AuthScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  termsRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginTop: 4 },
+  termsText: { flex: 1, lineHeight: 20 },
+});
 
 function HandleStatus({ availability }: { availability: Availability }) {
   const theme = useTheme();

@@ -53,7 +53,20 @@ export default function NotificationsScreen() {
     if ((n.type === 'new_follower' || n.type === 'follow_accepted') && n.actor_handle)
       return router.push(`/u/${n.actor_handle}`);
     if (n.type === 'reach_milestone') return router.push('/analytics');
-    if (n.type === 'moderation' && n.post_id) return router.push(`/post/${n.post_id}/edit`);
+    if (n.type === 'moderation') {
+      const status = String(n.payload.status ?? '');
+      const appealable = n.payload.appealable === true || status === 'removed' || status === 'flagged';
+      const targetType = (n.payload.target_type as string) ?? (n.post_id ? 'post' : n.comment_id ? 'comment' : 'account');
+      const targetId = (n.payload.target_id as string) ?? n.post_id ?? n.comment_id ?? undefined;
+      if (appealable && (targetId || targetType === 'account')) {
+        return router.push({
+          pathname: '/appeal',
+          params: { targetType, ...(targetId ? { targetId } : {}), reason: String(n.payload.reason ?? '') },
+        });
+      }
+      if (n.post_id) return router.push(`/post/${n.post_id}/edit`);
+      return;
+    }
     if ((n.type === 'comment' || n.type === 'reply' || n.type === 'comment_reaction') && n.post_id)
       return router.push(`/post/${n.post_id}`);
   }

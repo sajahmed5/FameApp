@@ -73,6 +73,9 @@ async function resolveProfile(user: User): Promise<ProfileResolution> {
         display_name: md.display_name,
         date_of_birth: md.date_of_birth,
         is_private: isPrivate,
+        // Terms accepted at signup (carried in metadata) — persist so no re-prompt.
+        terms_version: md.terms_version ?? null,
+        terms_accepted_at: md.terms_accepted_at ?? null,
       })
       .select('*')
       .single();

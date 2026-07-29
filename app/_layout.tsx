@@ -9,6 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { CameraCoachMark } from '@/components/camera-coach-mark';
 import { UploadBanner } from '@/components/upload-banner';
+import { TERMS_VERSION } from '@/constants/legal';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { analytics, track } from '@/lib/analytics';
 import { AuthProvider, useAuth, type AuthStatus } from '@/lib/auth-context';
@@ -66,12 +67,25 @@ function RootNavigator() {
   const router = useRouter();
   useAuthGuard(status);
   const tutorialShown = useRef(false);
+  const termsShown = useRef(false);
 
-  // First-run tutorial: once the user is fully onboarded, show it exactly once until
-  // `tutorial_complete` is persisted (see app/tutorial.tsx). The ref guards against a
-  // re-push while the profile round-trips.
+  // Terms re-acceptance gate (takes priority over the tutorial): if the accepted terms
+  // version is behind the current one, require re-acceptance once. New signups accept the
+  // current version at signup, so they are not prompted.
   useEffect(() => {
-    if (status === 'ready' && profile && !profile.tutorial_complete && !tutorialShown.current) {
+    if (status === 'ready' && profile && profile.terms_version !== TERMS_VERSION && !termsShown.current) {
+      termsShown.current = true;
+      router.push('/legal/accept');
+      return;
+    }
+    // First-run tutorial: once onboarded (and terms are current), show it exactly once.
+    if (
+      status === 'ready' &&
+      profile &&
+      profile.terms_version === TERMS_VERSION &&
+      !profile.tutorial_complete &&
+      !tutorialShown.current
+    ) {
       tutorialShown.current = true;
       router.push('/tutorial');
     }
@@ -131,6 +145,14 @@ function RootNavigator() {
         options={{ presentation: 'fullScreenModal', headerShown: false, gestureEnabled: false }}
       />
       <Stack.Screen name="points" options={{ headerShown: true, title: 'How points work' }} />
+      <Stack.Screen name="legal/[doc]" options={{ headerShown: true }} />
+      <Stack.Screen
+        name="legal/accept"
+        options={{ presentation: 'fullScreenModal', headerShown: false, gestureEnabled: false }}
+      />
+      <Stack.Screen name="appeal" options={{ presentation: 'modal', headerShown: true, title: 'Appeal' }} />
+      <Stack.Screen name="settings/sessions" options={{ headerShown: true, title: 'Devices & sessions' }} />
+      <Stack.Screen name="recover" options={{ headerShown: true, title: 'Account recovery' }} />
     </Stack>
   );
 }

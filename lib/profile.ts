@@ -330,16 +330,71 @@ export async function changePassword(newPassword: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function exportMyData(): Promise<unknown> {
-  const { data, error } = await supabase.rpc('export_my_data');
+/**
+ * Kick off a data export. The `data-export` Edge Function builds a JSON archive
+ * (profile, posts, comments, follows) plus signed download links for every media object,
+ * writes it to the private exports bucket, and returns a short-lived signed link.
+ */
+export async function requestDataExport(): Promise<{ url: string; mediaCount: number }> {
+  const { data, error } = await supabase.functions.invoke('data-export', { body: {} });
   if (error) throw error;
-  return data;
+  const res = data as { url?: string; media_count?: number; error?: string };
+  if (!res?.url) throw new Error(res?.error ?? 'export_failed');
+  return { url: res.url, mediaCount: res.media_count ?? 0 };
 }
 
+/**
+ * Full account erasure. The `delete-account` Edge Function removes every storage object
+ * the user owns (no orphans) and then deletes the auth user (cascading all DB rows);
+ * CSAM evidence under legal retention is preserved. Then we sign out locally.
+ */
 export async function deleteAccount(): Promise<void> {
-  const { error } = await supabase.rpc('delete_account');
+  const { error } = await supabase.functions.invoke('delete-account', { body: {} });
   if (error) throw error;
   await supabase.auth.signOut().catch(() => {});
+}
+
+/** Record the user's acceptance of a specific Terms/Privacy version (signup + re-accept). */
+export async function acceptTerms(version: string): Promise<void> {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u.user) return;
+  const { error } = await supabase
+    .from('profiles')
+    .update({ terms_version: version, terms_accepted_at: new Date().toISOString() })
+    .eq('id', u.user.id);
+  if (error) throw error;
+}
+
+/** Submit an appeal against a moderation action on the user's own content/account. */
+export async function submitAppeal(
+  targetType: 'post' | 'comment' | 'account',
+  targetId: string,
+  reason: string,
+): Promise<void> {
+  const { error } = await supabase.rpc('submit_appeal', {
+    _target_type: targetType,
+    _target_id: targetId,
+    _reason: reason,
+  });
+  if (error) throw error;
+}
+
+/** Sign out every OTHER device (keeps this session). Used by session management. */
+export async function signOutOtherSessions(): Promise<void> {
+  const { error } = await supabase.auth.signOut({ scope: 'others' });
+  if (error) throw error;
+}
+
+/** Devices currently registered for push — a proxy "active devices" list for settings. */
+export async function getActiveDevices(): Promise<{ id: string; platform: string; last_seen: string }[]> {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u.user) return [];
+  const { data } = await supabase
+    .from('push_tokens')
+    .select('token, platform, updated_at')
+    .eq('user_id', u.user.id)
+    .order('updated_at', { ascending: false });
+  return (data ?? []).map((d) => ({ id: d.token as string, platform: (d.platform as string) ?? 'device', last_seen: d.updated_at as string }));
 }
 
 export type NotificationPrefs = {

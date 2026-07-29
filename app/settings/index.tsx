@@ -1,13 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import { File, Paths } from 'expo-file-system';
 import { Stack, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   Switch,
   View,
@@ -21,8 +20,8 @@ import { analytics } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth-context';
 import {
   deleteAccount,
-  exportMyData,
   getNotificationPrefs,
+  requestDataExport,
   setNotificationPrefs,
   setPrivacy,
   setSearchRadius,
@@ -84,12 +83,17 @@ export default function SettingsScreen() {
   async function onExport() {
     setBusy('export');
     try {
-      const data = await exportMyData();
-      const file = new File(Paths.cache, 'fame-data-export.json');
-      if (file.exists) file.delete();
-      file.create();
-      file.write(JSON.stringify(data, null, 2));
-      await Share.share({ url: file.uri, title: 'My Fame data' });
+      // Server builds a JSON archive (profile, posts, comments, follows) + signed media
+      // links and returns a short-lived signed download link.
+      const { url, mediaCount } = await requestDataExport();
+      Alert.alert(
+        'Your export is ready',
+        `A downloadable archive of your data${mediaCount ? ` and ${mediaCount} media files` : ''} has been prepared. The link is valid for 24 hours.`,
+        [
+          { text: 'Download', onPress: () => void Linking.openURL(url) },
+          { text: 'Close', style: 'cancel' },
+        ],
+      );
     } catch {
       Alert.alert('Export failed', 'Could not export your data. Try again.');
     } finally {
@@ -231,6 +235,11 @@ export default function SettingsScreen() {
             label="Replay tutorial"
             onPress={() => router.push('/tutorial')}
           />
+          <LinkRow
+            icon="shield-checkmark-outline"
+            label="Community Guidelines"
+            onPress={() => router.push('/legal/guidelines')}
+          />
         </Group>
 
         <Group title="Safety">
@@ -248,6 +257,11 @@ export default function SettingsScreen() {
             onPress={() => router.push('/settings/password')}
           />
           <LinkRow
+            icon="phone-portrait-outline"
+            label="Devices & sessions"
+            onPress={() => router.push('/settings/sessions')}
+          />
+          <LinkRow
             icon="download-outline"
             label="Export my data"
             onPress={onExport}
@@ -260,6 +274,19 @@ export default function SettingsScreen() {
             destructive
             onPress={confirmDelete}
             busy={busy === 'delete'}
+          />
+        </Group>
+
+        <Group title="Legal">
+          <LinkRow
+            icon="document-text-outline"
+            label="Terms of Service"
+            onPress={() => router.push('/legal/terms')}
+          />
+          <LinkRow
+            icon="lock-closed-outline"
+            label="Privacy Policy"
+            onPress={() => router.push('/legal/privacy')}
           />
         </Group>
       </ScrollView>

@@ -36,6 +36,12 @@ export type Profile = {
   onboarding_complete: boolean;
   /** First-run tutorial finished (or skipped) — stops it ever showing again. */
   tutorial_complete: boolean;
+  /** Version of the Terms/Privacy the user last accepted (drives the re-accept gate). */
+  terms_version: string | null;
+  terms_accepted_at: string | null;
+  /** Moderation state (client-read only; written by admins). */
+  account_status: 'active' | 'suspended' | 'banned' | 'frozen';
+  status_reason: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -64,4 +70,6 @@ export type SignupIdentityMetadata = {
   display_name: string;
   handle: string;
   date_of_birth: string; // ISO `YYYY-MM-DD`
+  terms_version: string;
+  terms_accepted_at: string; // ISO timestamp
 };

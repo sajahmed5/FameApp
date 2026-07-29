@@ -1,4 +1,5 @@
 import * as ImageManipulator from 'expo-image-manipulator';
+import { Platform } from 'react-native';
 
 import { SUPABASE_ANON_KEY, SUPABASE_URL, supabase } from '@/lib/supabase';
 import { findOrCreateTag } from '@/lib/tags';
@@ -93,13 +94,25 @@ export function uploadToPipeline(
       return reject(new UploadFailed('Could not prepare the image for upload.'));
     }
 
+    const filename = prepared.fileName ?? `upload.${prepared.type === 'video' ? 'mp4' : 'jpg'}`;
     const form = new FormData();
-    // React Native FormData file part.
-    form.append('file', {
-      uri: prepared.uri,
-      name: prepared.fileName ?? `upload.${prepared.type === 'video' ? 'mp4' : 'jpg'}`,
-      type: prepared.mime,
-    } as unknown as Blob);
+    if (Platform.OS === 'web') {
+      // Browser FormData needs a real Blob/File — the RN {uri,name,type} object doesn't
+      // carry bytes. Fetch the picked blob:/data: URL into a Blob and append that.
+      try {
+        const blob = await fetch(prepared.uri).then((r) => r.blob());
+        form.append('file', blob, filename);
+      } catch {
+        return reject(new UploadFailed('Could not read the selected file.'));
+      }
+    } else {
+      // React Native FormData file part.
+      form.append('file', {
+        uri: prepared.uri,
+        name: filename,
+        type: prepared.mime,
+      } as unknown as Blob);
+    }
 
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `${SUPABASE_URL}/functions/v1/media-pipeline`);

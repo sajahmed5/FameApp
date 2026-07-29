@@ -3,7 +3,7 @@ import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -47,7 +47,9 @@ export default function CameraScreen() {
       // Images go through the shared editor first (filters/text/stickers/draw), which
       // burns edits in and then continues to the post or story flow. Video bypasses the
       // editor — burning overlays into every frame is out of scope for this path.
-      if (media.type === 'image') {
+      // On web the editor (Skia/CanvasKit) isn't wired up, so images skip straight to the
+      // post/story flow; capture + upload still work, just without in-app editing.
+      if (media.type === 'image' && Platform.OS !== 'web') {
         router.push({
           pathname: '/edit',
           params: {

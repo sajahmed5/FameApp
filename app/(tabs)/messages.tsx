@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, TextInput, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 
 import { ThemedText } from '@/components/themed-text';
@@ -17,6 +17,8 @@ import {
   subscribeToInbox,
   type Conversation,
 } from '@/lib/messages';
+import { confirm } from '@/lib/confirm';
+import { useRefresh } from '@/lib/use-refresh';
 
 export default function MessagesScreen() {
   const theme = useTheme();
@@ -36,6 +38,8 @@ export default function MessagesScreen() {
       setLoading(false);
     }
   }, []);
+
+  const refresh = useRefresh(load);
 
   // Reload on focus + live-refresh when a message lands in any of my conversations.
   useFocusEffect(
@@ -97,6 +101,7 @@ export default function MessagesScreen() {
         <FlatList
           data={shown}
           keyExtractor={(c) => c.id}
+          refreshControl={<RefreshControl {...refresh} tintColor={theme.textSecondary} />}
           contentContainerStyle={shown.length === 0 ? styles.center : undefined}
           renderItem={({ item }) => (
             <ConversationRow
@@ -108,6 +113,8 @@ export default function MessagesScreen() {
                 void load();
               }}
               onLeave={async () => {
+                const group = item.type === 'group';
+                if (!(await confirm(group ? 'Leave this group?' : 'Delete this conversation?', undefined, group ? 'Leave' : 'Delete'))) return;
                 await leaveConversation(item.id);
                 void load();
               }}

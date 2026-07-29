@@ -81,6 +81,11 @@ export default function AppealScreen() {
             style={[styles.input, { color: theme.text, borderColor: theme.border }]}
             maxLength={1000}
           />
+          {reason.length >= 900 ? (
+            <ThemedText type="small" themeColor={reason.length >= 1000 ? 'danger' : 'textSecondary'} style={styles.counter}>
+              {1000 - reason.length} characters left
+            </ThemedText>
+          ) : null}
           <Button title="Submit appeal" onPress={submit} loading={busy} disabled={reason.trim().length < 3} />
         </ScrollView>
       </KeyboardAvoidingView>
@@ -93,4 +98,5 @@ const styles = StyleSheet.create({
   content: { padding: 20, gap: 14 },
   reasonBox: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 10, padding: 12 },
   input: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, padding: 14, minHeight: 140, textAlignVertical: 'top', fontSize: 16 },
+  counter: { textAlign: 'right' },
 });

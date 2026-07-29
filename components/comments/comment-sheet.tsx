@@ -32,6 +32,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ActionMenu, type ActionOption } from '@/components/ui/action-menu';
 import { FormMessage } from '@/components/ui/form-message';
 import { confirm } from '@/lib/confirm';
+import { useAndroidBack } from '@/lib/use-android-back';
 import { useComments } from '@/lib/use-comments';
 import type { CommentView } from '@/lib/comments';
 import { useTheme } from '@/hooks/use-theme';
@@ -80,6 +81,8 @@ export function CommentSheet({
       if (finished) runOnJS(onClose)();
     });
   }, [onClose, sheetHeight, translateY]);
+
+  useAndroidBack(true, dismiss); // hardware back closes the comment sheet, not the post
 
   const drag = Gesture.Pan()
     .onUpdate((e) => {

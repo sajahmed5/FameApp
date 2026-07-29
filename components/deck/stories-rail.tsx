@@ -37,7 +37,11 @@ export function StoriesRail() {
   return (
     <View style={[styles.container, { borderBottomColor: theme.border }]}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <Pressable style={styles.item} onPress={() => (self?.has_story ? openViewer(self.user_id) : create())}>
+        <Pressable
+          style={styles.item}
+          onPress={() => (self?.has_story ? openViewer(self.user_id) : create())}
+          accessibilityRole="button"
+          accessibilityLabel={self?.has_story ? 'View your story' : 'Add to your story'}>
           <View
             style={[
               styles.ring,
@@ -49,7 +53,9 @@ export function StoriesRail() {
             <Pressable
               onPress={create}
               style={[styles.add, { backgroundColor: theme.tint, borderColor: theme.background }]}
-              hitSlop={6}>
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel="Add to your story">
               <Ionicons name="add" size={14} color="#fff" />
             </Pressable>
           </View>
@@ -59,7 +65,12 @@ export function StoriesRail() {
         </Pressable>
 
         {others.map((item) => (
-          <Pressable key={item.user_id} style={styles.item} onPress={() => openViewer(item.user_id)}>
+          <Pressable
+            key={item.user_id}
+            style={styles.item}
+            onPress={() => openViewer(item.user_id)}
+            accessibilityRole="button"
+            accessibilityLabel={`View ${item.handle ? `@${item.handle}` : "this person"}'s story${item.has_unviewed ? ', new' : ''}`}>
             <View style={[styles.ring, { borderColor: item.has_unviewed ? theme.tint : theme.border }]}>
               <Avatar uri={item.avatar_url} theme={theme} />
             </View>

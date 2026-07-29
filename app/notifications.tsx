@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -11,6 +11,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { getNotifications, type InboxNotification } from '@/lib/notifications';
 import { signMediaPaths } from '@/lib/media';
 import { useNotifications } from '@/lib/notifications-provider';
+import { formatRelative } from '@/lib/relative-time';
+import { useRefresh } from '@/lib/use-refresh';
 
 export default function NotificationsScreen() {
   const theme = useTheme();
@@ -39,6 +41,8 @@ export default function NotificationsScreen() {
       setError(true);
     }
   }, []);
+
+  const refresh = useRefresh(load);
 
   // Load + mark everything read when the inbox opens (badge clears on read).
   useFocusEffect(
@@ -97,6 +101,7 @@ export default function NotificationsScreen() {
           data={rows}
           keyExtractor={(n) => n.id}
           renderItem={({ item }) => <Row n={item} onPress={() => open(item)} />}
+          refreshControl={<RefreshControl {...refresh} tintColor={theme.textSecondary} />}
         />
       )}
     </ThemedView>
@@ -124,7 +129,7 @@ function Row({ n, onPress }: { n: InboxNotification; onPress: () => void }) {
           {message(n)}
         </ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
-          {timeAgo(n.created_at)}
+          {formatRelative(n.created_at)}
         </ThemedText>
       </View>
       {n.post_thumbnail ? (
@@ -187,14 +192,6 @@ function message(n: InboxNotification): string {
     default:
       return '';
   }
-}
-
-function timeAgo(iso: string): string {
-  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (s < 60) return 'just now';
-  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
-  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
-  return `${Math.floor(s / 86400)}d ago`;
 }
 
 const styles = StyleSheet.create({

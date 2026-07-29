@@ -5,9 +5,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { AppState, Pressable, StyleSheet, View } from 'react-native';
 
 import type { DeckCard } from '@/lib/deck';
+import { getMuted, setMutedPreference, subscribeMute } from '@/lib/mute-preference';
 
 const VIDEO_CAP_SECONDS = 60;
 
@@ -27,30 +28,50 @@ function CardImage({ card }: { card: DeckCard }) {
       contentFit="cover"
       transition={180}
       recyclingKey={card.id}
+      accessibilityRole="image"
+      // Surface the poster's alt text to screen readers.
+      accessibilityLabel={card.alt_text || card.caption || 'Post image'}
     />
   );
 }
 
 function CardVideo({ card, isActive }: { card: DeckCard; isActive: boolean }) {
-  const [muted, setMuted] = useState(true);
+  // Mute follows the global, persisted preference — an unmute carries to the next card and
+  // across sessions rather than resetting per card.
+  const [muted, setMuted] = useState(getMuted());
 
   const player = useVideoPlayer(card.media_url, (p) => {
     p.loop = true;
-    p.muted = true;
+    p.muted = getMuted();
     p.timeUpdateEventInterval = 1;
   });
 
-  // Only the focused card plays; leaving re-mutes so the next focus starts muted.
+  // Keep this card's player in sync when another card changes the shared mute preference.
+  useEffect(() => subscribeMute((m) => {
+    player.muted = m;
+    setMuted(m);
+  }), [player]);
+
+  // Only the focused card plays; muting honours the global preference (no forced re-mute).
   useEffect(() => {
     if (isActive) {
+      player.muted = getMuted();
       player.play();
     } else {
       player.pause();
-      player.muted = true;
-      // Syncing the mute badge to the player when focus leaves (external-system sync).
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setMuted(true);
     }
+  }, [isActive, player]);
+
+  // Pause when the app backgrounds; resume on return if this card is still focused.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') {
+        if (isActive) player.play();
+      } else {
+        player.pause();
+      }
+    });
+    return () => sub.remove();
   }, [isActive, player]);
 
   // Enforce the 60s cap: loop back to the start once a clip passes the cap.
@@ -65,6 +86,7 @@ function CardVideo({ card, isActive }: { card: DeckCard; isActive: boolean }) {
     const next = !muted;
     player.muted = next;
     setMuted(next);
+    setMutedPreference(next); // persist across cards + sessions
   }
 
   return (
@@ -75,6 +97,8 @@ function CardVideo({ card, isActive }: { card: DeckCard; isActive: boolean }) {
         style={StyleSheet.absoluteFill}
         contentFit="cover"
         recyclingKey={card.id}
+        accessibilityRole="image"
+        accessibilityLabel={card.alt_text || card.caption || 'Post video'}
       />
       {/* pointerEvents="none": VideoView is a native view that otherwise swallows
           touches at the native layer — above the JS overlay — so the like/skip/comment

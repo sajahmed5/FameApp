@@ -8,10 +8,12 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { CameraCoachMark } from '@/components/camera-coach-mark';
+import { OfflineBanner } from '@/components/offline-banner';
 import { UploadBanner } from '@/components/upload-banner';
 import { TERMS_VERSION } from '@/constants/legal';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { analytics, track } from '@/lib/analytics';
+import { loadMutePreference } from '@/lib/mute-preference';
 import { AuthProvider, useAuth, type AuthStatus } from '@/lib/auth-context';
 import { NotificationsProvider } from '@/lib/notifications-provider';
 import { initSentry, Sentry } from '@/lib/sentry';
@@ -98,11 +100,13 @@ function RootNavigator() {
   }, [status]);
 
   // Start analytics once (honours the opt-out before any event fires) and emit a
-  // session_start. init() no-ops when opted out or no key is set.
+  // session_start. init() no-ops when opted out or no key is set. Also load the persisted
+  // video mute preference so the first video card honours it.
   useEffect(() => {
     void analytics.init().then((on) => {
       if (on) track('session_start');
     });
+    void loadMutePreference();
   }, []);
 
   // Identify by user id ONLY once signed in; also set the Sentry user to just the id.
@@ -118,7 +122,7 @@ function RootNavigator() {
   }, [user?.id, status]);
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(onboarding)" />
@@ -170,6 +174,7 @@ function RootLayout() {
                 <RootNavigator />
                 <UploadBanner />
                 <CameraCoachMark />
+                <OfflineBanner />
               </UploadManagerProvider>
             </NotificationsProvider>
           </AuthProvider>

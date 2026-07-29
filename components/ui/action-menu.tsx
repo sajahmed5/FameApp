@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/use-theme';
+import { useAndroidBack } from '@/lib/use-android-back';
 
 export type ActionOption = {
   label: string;
@@ -23,6 +24,7 @@ export function ActionMenu({
   onClose: () => void;
 }) {
   const theme = useTheme();
+  useAndroidBack(visible, onClose); // hardware back dismisses the menu, not the screen
   if (!visible) return null;
 
   return (

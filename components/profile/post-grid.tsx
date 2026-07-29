@@ -1,16 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { FlatList, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useTheme } from '@/hooks/use-theme';
 import type { GridPost } from '@/lib/profile';
 
@@ -67,8 +61,11 @@ export function PostGrid({
 
   const footer =
     status === 'loading' ? (
-      <View style={styles.state}>
-        <ActivityIndicator color={theme.textSecondary} />
+      // Skeleton grid (predictable layout) instead of a bare spinner.
+      <View style={styles.skeletonGrid}>
+        {Array.from({ length: 12 }).map((_, i) => (
+          <Skeleton key={i} style={{ width: size, height: size, borderRadius: 0, margin: gap / 2 }} />
+        ))}
       </View>
     ) : status === 'error' ? (
       <View style={styles.state}>
@@ -102,7 +99,8 @@ export function PostGrid({
         <Pressable
           onPress={() => onPressPost(item)}
           style={{ width: size, height: size }}
-          accessibilityRole="button">
+          accessibilityRole="button"
+          accessibilityLabel={`${item.media_type === 'video' ? 'Video' : 'Photo'} post${item.visibility === 'private' ? ', private' : ''}`}>
           <Image
             source={{ uri: item.thumbnail_url }}
             style={styles.thumb}
@@ -133,5 +131,6 @@ const styles = StyleSheet.create({
   badges: { position: 'absolute', top: 4, right: 4, flexDirection: 'row', gap: 4 },
   badge: { backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 999, padding: 4 },
   state: { paddingVertical: 40, alignItems: 'center', gap: 12 },
+  skeletonGrid: { flexDirection: 'row', flexWrap: 'wrap' },
   center: { textAlign: 'center' },
 });

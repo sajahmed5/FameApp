@@ -11,8 +11,13 @@ export type ThemedTextProps = TextProps & {
 export function ThemedText({ style, type = 'default', themeColor, ...rest }: ThemedTextProps) {
   const theme = useTheme();
 
+  // Support Dynamic Type but cap the multiplier so the fixed line-heights on the large
+  // display styles don't clip at the largest accessibility sizes. Callers can override.
+  const cap = type === 'title' ? 1.4 : type === 'subtitle' ? 1.5 : 2;
+
   return (
     <Text
+      maxFontSizeMultiplier={cap}
       style={[
         { color: theme[themeColor ?? 'text'] },
         type === 'default' && styles.default,

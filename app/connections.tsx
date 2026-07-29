@@ -1,6 +1,6 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { UserRow } from '@/components/profile/user-row';
 import { ThemedText } from '@/components/themed-text';
@@ -8,6 +8,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/use-theme';
 import { getConnections, type Connection } from '@/lib/profile';
+import { useRefresh } from '@/lib/use-refresh';
 
 export default function ConnectionsScreen() {
   const { userId, type } = useLocalSearchParams<{
@@ -27,6 +28,8 @@ export default function ConnectionsScreen() {
       setError(true);
     }
   }, [userId, type]);
+
+  const refresh = useRefresh(load);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- mount data-loader; sets loading/error state internally
   useEffect(() => {
@@ -67,6 +70,7 @@ export default function ConnectionsScreen() {
               onPress={() => router.push(`/u/${item.handle}`)}
             />
           )}
+          refreshControl={<RefreshControl {...refresh} tintColor={theme.textSecondary} />}
         />
       )}
     </ThemedView>

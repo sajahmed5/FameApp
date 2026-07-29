@@ -1,8 +1,7 @@
-import { Image } from 'expo-image';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { useTheme } from '@/hooks/use-theme';
+import { Avatar } from '@/components/ui/avatar';
 
 export function UserRow({
   handle,
@@ -17,20 +16,14 @@ export function UserRow({
   onPress?: () => void;
   right?: React.ReactNode;
 }) {
-  const theme = useTheme();
   const body = (
     <View style={styles.row}>
-      {avatarUrl ? (
-        <Image source={{ uri: avatarUrl }} style={styles.avatar} contentFit="cover" />
-      ) : (
-        <View
-          style={[styles.avatar, styles.fallback, { backgroundColor: theme.backgroundSelected }]}>
-          <ThemedText type="smallBold">{displayName.slice(0, 1).toUpperCase()}</ThemedText>
-        </View>
-      )}
+      <Avatar uri={avatarUrl} name={displayName} handle={handle} size={44} />
       <View style={styles.text}>
-        <ThemedText type="smallBold">{displayName}</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
+        <ThemedText type="smallBold" numberOfLines={1}>
+          {displayName}
+        </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
           @{handle}
         </ThemedText>
       </View>
@@ -57,8 +50,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
   },
-  avatar: { width: 44, height: 44, borderRadius: 22 },
-  fallback: { alignItems: 'center', justifyContent: 'center' },
   text: { flex: 1, gap: 1 },
   pressed: { opacity: 0.6 },
 });

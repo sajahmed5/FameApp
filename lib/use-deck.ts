@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { track, trackFirst } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth-context';
+import { haptics } from '@/lib/haptics';
 import { DECK_BATCH_SIZE, type DeckCard, type FetchBatch, type SwipeDirection } from '@/lib/deck';
 import { resolveDeckMedia } from '@/lib/media';
 import { SwipeQueue } from '@/lib/swipe-queue';
@@ -135,6 +136,7 @@ export function useDeck(fetchBatch: FetchBatch): UseDeck {
       // Emit BEFORE mutating state. `direction` only — NEVER the post id, so no
       // post↔swiper pair can ever be reconstructed by the analytics backend.
       if (cardsRef.current.length > 0) {
+        haptics.light(); // light tap on a committed swipe
         track('swipe', { direction });
         if (uid) void trackFirst(uid, 'first_swipe');
       }
@@ -153,7 +155,10 @@ export function useDeck(fetchBatch: FetchBatch): UseDeck {
   );
 
   const undo = useCallback(() => {
-    if (lastSwipedRef.current) track('undo_used');
+    if (lastSwipedRef.current) {
+      haptics.light();
+      track('undo_used');
+    }
     setLastSwiped((prev) => {
       if (!prev) return null;
       queueRef.current?.enqueueUndo(prev.id);

@@ -6,6 +6,7 @@ import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { CardMedia } from '@/components/deck/card-media';
 import type { DeckCard } from '@/lib/deck';
+import { formatCount } from '@/lib/format';
 
 /**
  * Presentational card: full-bleed media + overlays. Used for both the interactive top
@@ -61,7 +62,7 @@ export const SwipeCard = memo(function SwipeCard({
           style={({ pressed }) => [styles.commentButton, pressed && { opacity: 0.6 }]}>
           <Ionicons name="chatbubble-outline" size={20} color="#fff" />
           <ThemedText type="small" style={styles.statText}>
-            {card.comment_count}
+            {formatCount(card.comment_count)}
           </ThemedText>
         </Pressable>
         {onUndo ? (
@@ -164,7 +165,7 @@ function ActionStat({
       style={({ pressed }) => [styles.stat, pressed && { opacity: 0.6 }]}>
       <Ionicons name={icon} size={20} color="#fff" />
       <ThemedText type="small" style={styles.statText}>
-        {value}
+        {formatCount(value)}
       </ThemedText>
     </Pressable>
   );

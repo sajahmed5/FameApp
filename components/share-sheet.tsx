@@ -9,6 +9,7 @@ import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/use-theme';
 import { trackFirst } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth-context';
+import { useAndroidBack } from '@/lib/use-android-back';
 import type { Conversation } from '@/lib/messages';
 import { getShareTargets, postLink, sharePost, type SharePerson } from '@/lib/share';
 
@@ -28,6 +29,7 @@ export function ShareSheet({
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  useAndroidBack(true, onClose); // hardware back closes the share sheet
   const [targets, setTargets] = useState<Target[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');

@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Application from 'expo-application';
 import { Stack, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -14,7 +15,7 @@ import {
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BRAND } from '@/constants/config';
+import { BRAND, SUPPORT_EMAIL } from '@/constants/config';
 import { useTheme } from '@/hooks/use-theme';
 import { analytics } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth-context';
@@ -240,6 +241,15 @@ export default function SettingsScreen() {
             label="Community Guidelines"
             onPress={() => router.push('/legal/guidelines')}
           />
+          <LinkRow
+            icon="mail-outline"
+            label="Contact support"
+            onPress={() =>
+              void Linking.openURL(
+                `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Fame support')}`,
+              )
+            }
+          />
         </Group>
 
         <Group title="Safety">
@@ -289,6 +299,10 @@ export default function SettingsScreen() {
             onPress={() => router.push('/legal/privacy')}
           />
         </Group>
+
+        <ThemedText type="small" themeColor="textSecondary" style={styles.version}>
+          Fame {Application.nativeApplicationVersion ?? '1.0.0'} ({Application.nativeBuildVersion ?? '—'})
+        </ThemedText>
       </ScrollView>
     </ThemedView>
   );
@@ -379,4 +393,5 @@ const styles = StyleSheet.create({
   linkLabel: { flex: 1 },
   radii: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, padding: 14, paddingTop: 0 },
   radius: { borderWidth: 1, borderRadius: 999, paddingVertical: 8, paddingHorizontal: 14 },
+  version: { textAlign: 'center', paddingVertical: 8 },
 });

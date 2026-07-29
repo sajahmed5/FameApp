@@ -1,3 +1,4 @@
+import { ErrorBoundary } from '@/components/error-boundary';
 import { ThemedView } from '@/components/themed-view';
 import { DeckView } from '@/components/deck/deck-view';
 import { fetchDeck } from '@/lib/deck';
@@ -6,7 +7,9 @@ import { fetchDeck } from '@/lib/deck';
 export default function HomeScreen() {
   return (
     <ThemedView style={{ flex: 1 }}>
-      <DeckView fetchBatch={fetchDeck} />
+      <ErrorBoundary label="The feed">
+        <DeckView fetchBatch={fetchDeck} />
+      </ErrorBoundary>
     </ThemedView>
   );
 }

@@ -21,6 +21,7 @@ import { ThemedView } from '@/components/themed-view';
 import { ActionMenu, type ActionOption } from '@/components/ui/action-menu';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
+import { confirm } from '@/lib/confirm';
 import { blockUser } from '@/lib/profile';
 import { uploadToPipeline } from '@/lib/upload';
 import {
@@ -202,16 +203,24 @@ export default function ConversationScreen() {
         label: `Block @${other.handle}`,
         destructive: true,
         onPress: async () => {
+          if (!(await confirm('Block this user?', 'They can no longer message you.', 'Block'))) return;
           await blockUser(other.id);
           Alert.alert('Blocked', 'They can no longer message you.');
           router.back();
         },
       });
     }
+    const isGroup = detail.type === 'group';
     opts.push({
-      label: detail.type === 'group' ? 'Leave group' : 'Delete conversation',
+      label: isGroup ? 'Leave group' : 'Delete conversation',
       destructive: true,
       onPress: async () => {
+        const ok = await confirm(
+          isGroup ? 'Leave this group?' : 'Delete this conversation?',
+          isGroup ? 'You will stop receiving its messages.' : 'This removes it from your inbox.',
+          isGroup ? 'Leave' : 'Delete',
+        );
+        if (!ok) return;
         await leaveConversation(cid);
         router.back();
       },
@@ -297,7 +306,7 @@ export default function ConversationScreen() {
             ? [
                 { label: 'Reply', onPress: () => setReply(msgMenu) },
                 ...(msgMenu.sender_id === meId && !msgMenu.deleted_at
-                  ? [{ label: 'Delete', destructive: true, onPress: async () => { await deleteMessage(msgMenu.id); void refresh(); } }]
+                  ? [{ label: 'Delete', destructive: true, onPress: async () => { if (!(await confirm('Delete message?', 'This removes it for everyone.', 'Delete'))) return; await deleteMessage(msgMenu.id); void refresh(); } }]
                   : [{ label: 'Report message', onPress: () => setReportTarget(msgMenu) }]),
               ]
             : []

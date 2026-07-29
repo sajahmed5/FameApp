@@ -1,4 +1,8 @@
-/** Compact relative timestamp: "now", "5m", "3h", "2d", "4w", or a date. */
+/**
+ * Compact relative timestamp: "now", "5m", "3h", "2d", then an absolute date once it is
+ * more than a week old (per the formatting spec — beyond a week we show a real date rather
+ * than "3w", which is hard to place).
+ */
 export function formatRelative(iso: string, now: Date = new Date()): string {
   const then = new Date(iso).getTime();
   const diffMs = now.getTime() - then;
@@ -11,8 +15,6 @@ export function formatRelative(iso: string, now: Date = new Date()): string {
   if (hr < 24) return `${hr}h`;
   const day = Math.floor(hr / 24);
   if (day < 7) return `${day}d`;
-  const wk = Math.floor(day / 7);
-  if (wk < 5) return `${wk}w`;
 
   const d = new Date(iso);
   const sameYear = d.getFullYear() === now.getFullYear();

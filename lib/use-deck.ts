@@ -13,7 +13,9 @@ export type DeckStatus = 'loading' | 'ready' | 'exhausted' | 'error';
 // Start fetching the next batch once the buffer drops to ~card 5 of the current 20.
 const REFILL_AT = DECK_BATCH_SIZE - 5;
 // Warm the media for the next few cards so they don't pop in.
-const PREFETCH_AHEAD = 3;
+// Warm the next ~15 cards' media so swiping stays smooth (image bytes are already
+// in expo-image's cache by the time the card reaches the top).
+const PREFETCH_AHEAD = 15;
 
 export type UseDeck = {
   cards: DeckCard[];
@@ -96,7 +98,8 @@ export function useDeck(fetchBatch: FetchBatch): UseDeck {
       if (fresh.length) {
         setCards((prev) => {
           const next = [...prev, ...fresh];
-          if (prev.length === 0) prefetchMedia(next);
+          // Warm the freshly-arrived batch's media (not just when the deck was empty).
+          prefetchMedia(fresh);
           return next;
         });
       }

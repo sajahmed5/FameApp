@@ -75,7 +75,9 @@ export function DeckView({ fetchBatch, header, renderEmpty }: DeckViewProps) {
           canUndo={canUndo}
           onUndo={undo}
         />
-        {pendingWrites > 0 ? <PendingPill count={pendingWrites} top={insets.top + 8} /> : null}
+        {/* Only surface a real backlog (e.g. offline) — a single in-flight write shouldn't
+            flash on every swipe and make it feel janky. */}
+        {pendingWrites > 3 ? <PendingPill count={pendingWrites} top={insets.top + 8} /> : null}
       </View>
     );
   } else if (status === 'error') {

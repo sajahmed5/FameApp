@@ -27,6 +27,11 @@ export type Draft = {
   altText: string;
   visibility: 'public' | 'private';
   attachLocation: boolean;
+  /** Coarse cell to store when attachLocation is on — from the photo's EXIF or the device.
+   *  null falls back to the pipeline's media cell (if any). */
+  locationCell: string | null;
+  /** Human-readable place, for the compose UI only (never stored). */
+  locationLabel: string | null;
   tags: { name: string; source: 'user' | 'vision' | 'geo' }[];
 };
 
@@ -91,6 +96,7 @@ export function UploadManagerProvider({ children }: { children: ReactNode }) {
         altText: c.draft.altText,
         visibility: c.draft.visibility,
         attachLocation: c.draft.attachLocation,
+        locationCell: c.draft.locationCell,
         tags: c.draft.tags,
       });
       if (user?.id) void trackFirst(user.id, 'first_post'); // milestone only, no post id/media
@@ -164,6 +170,8 @@ export function UploadManagerProvider({ children }: { children: ReactNode }) {
           altText: '',
           visibility: defaults.visibility,
           attachLocation: false,
+          locationCell: null,
+          locationLabel: null,
           tags: [],
         },
         submitRequested: false,

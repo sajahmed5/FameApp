@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { LocationField } from '@/components/compose/location-field';
 import { TagPicker } from '@/components/compose/tag-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -131,18 +132,13 @@ export default function ComposeScreen() {
             onValueChange={(v) => updateDraft({ visibility: v ? 'private' : 'public' })}
           />
 
-          {/* Location — off by default, plain explanation */}
-          <ToggleRow
-            title="Add location"
-            subtitle="Shares only an approximate area, never your exact position."
-            value={draft.attachLocation}
-            onValueChange={(v) => updateDraft({ attachLocation: v })}
-            disabled={!result?.suggestions.location_cell}
-            disabledNote={
-              result && !result.suggestions.location_cell
-                ? 'No location found in this media.'
-                : undefined
-            }
+          {/* Location — off by default. Uses the photo's GPS or the device's, then offers
+              nearby places to tag; stores only a coarse area. */}
+          <LocationField
+            attachLocation={draft.attachLocation}
+            label={draft.locationLabel}
+            mediaGps={result?.suggestions.gps ?? null}
+            onChange={(v) => updateDraft(v)}
           />
 
           {/* Tags */}

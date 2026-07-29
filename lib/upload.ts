@@ -154,6 +154,9 @@ export type CreatePostInput = {
   altText: string;
   visibility: 'public' | 'private';
   attachLocation: boolean;
+  /** Coarse cell chosen client-side (device GPS / picked venue). Falls back to the
+   *  pipeline's EXIF-derived cell when null. */
+  locationCell?: string | null;
   // Tags the user confirmed, split by provenance. Names are raw; resolved here.
   tags: { name: string; source: 'user' | 'vision' | 'geo' }[];
 };
@@ -181,8 +184,11 @@ export async function createPost(input: CreatePostInput): Promise<string> {
       caption: input.caption.trim() || null,
       alt_text: input.altText.trim() || null,
       visibility: input.visibility,
-      // Only the coarse cell, only if opted in — never raw coordinates.
-      location_cell: input.attachLocation ? (result.suggestions.location_cell ?? null) : null,
+      // Only the coarse cell, only if opted in — never raw coordinates. Prefer the
+      // client-chosen cell (device GPS / picked venue), else the EXIF-derived one.
+      location_cell: input.attachLocation
+        ? (input.locationCell ?? result.suggestions.location_cell ?? null)
+        : null,
     })
     .select('id')
     .single();

@@ -49,6 +49,12 @@
       "expo-secure-store",
       "expo-video",
       "expo-localization",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Fame uses your location only when you choose to add where a post was taken. It's stored as a coarse area, never your exact position."
+        }
+      ],
       "@react-native-community/datetimepicker",
       [
         "expo-camera",

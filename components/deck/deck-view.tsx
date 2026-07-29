@@ -124,7 +124,7 @@ function PendingPill({ count, top }: { count: number; top: number }) {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   body: { flex: 1 },
-  deckArea: { flex: 1, padding: 10 },
+  deckArea: { flex: 1 },
   pending: {
     position: 'absolute',
     alignSelf: 'center',

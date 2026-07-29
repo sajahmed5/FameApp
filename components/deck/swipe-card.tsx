@@ -184,7 +184,6 @@ const textShadow = Platform.select({
 const styles = StyleSheet.create({
   card: {
     flex: 1,
-    borderRadius: 20,
     overflow: 'hidden',
     backgroundColor: '#111',
   },

@@ -137,7 +137,7 @@ export default function MessagesScreen() {
 
       <Pressable
         onPress={() => router.push('/messages/new')}
-        style={[styles.fab, { backgroundColor: theme.tint }]}
+        style={[styles.fab, { backgroundColor: theme.tint, bottom: insets.bottom + TAB_BAR_CLEARANCE }]}
         accessibilityLabel="New message">
         <Ionicons name="create-outline" size={24} color="#fff" />
       </Pressable>

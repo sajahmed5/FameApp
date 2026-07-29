@@ -7,3 +7,28 @@
   --font-rounded: 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif;
   --font-serif: Georgia, 'Times New Roman', serif;
 }
+
+/* React Native Web renders TextInput as a native <input>/<textarea>. Hide the
+   browser's default (blue) focus outline — the app draws its own field borders —
+   but keep an accessible orange ring for keyboard navigation only. */
+input,
+textarea {
+  outline: none;
+}
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #c85a28;
+  outline-offset: 1px;
+}
+
+/* iOS Safari zooms the page when focusing an input whose font-size is < 16px.
+   Force a 16px minimum on iOS only (guarded by an iOS-specific @supports) so
+   focusing search/inputs no longer jumps the viewport; other platforms keep
+   their designed sizes. */
+@supports (-webkit-touch-callout: none) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}

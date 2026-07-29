@@ -7,13 +7,14 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Modal,
   Pressable,
   RefreshControl,
   StyleSheet,
   useWindowDimensions,
   View,
 } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
   interpolate,
@@ -189,7 +190,9 @@ export function CommentSheet({
       : null;
 
   return (
-    <View style={styles.overlay}>
+    <Modal transparent visible animationType="none" onRequestClose={dismiss}>
+      <GestureHandlerRootView style={styles.flex}>
+        <View style={styles.overlay}>
       <Animated.View style={[styles.backdropWrap, backdropStyle]}>
         <Pressable
           style={styles.backdropPress}
@@ -316,11 +319,14 @@ export function CommentSheet({
         ]}
         onClose={() => setReportTarget(null)}
       />
-    </View>
+        </View>
+      </GestureHandlerRootView>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 20 },
   backdropWrap: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   backdropPress: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },

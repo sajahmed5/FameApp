@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, AppState, Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -41,6 +41,23 @@ export default function CameraScreen() {
   const [recProgress, setRecProgress] = useState(0); // 0..1 of the 60s cap
   const recTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const recStart = useRef<number>(0);
+
+  // The camera preview goes black after the app is backgrounded (or the tab is left) unless
+  // CameraView is remounted. Mount it only while the screen is focused AND the app is in the
+  // foreground, so returning to the camera always shows a live preview.
+  const [isFocused, setIsFocused] = useState(true);
+  useFocusEffect(
+    useCallback(() => {
+      setIsFocused(true);
+      return () => setIsFocused(false);
+    }, []),
+  );
+  const [appActive, setAppActive] = useState(true);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => setAppActive(s === 'active'));
+    return () => sub.remove();
+  }, []);
+  const cameraLive = isFocused && appActive;
 
   const startNewComposition = useCallback(
     (media: PickedMedia) => {
@@ -118,7 +135,19 @@ export default function CameraScreen() {
           mime: 'video/mp4',
           fileName: 'capture.mp4',
         });
+      } else if (Platform.OS === 'web') {
+        Alert.alert(
+          'Video',
+          "In-app recording isn't supported in this browser. Tap the gallery icon (bottom-left) to upload a video from your device instead.",
+        );
       }
+    } catch {
+      Alert.alert(
+        'Video',
+        Platform.OS === 'web'
+          ? "In-app recording isn't supported in this browser. Tap the gallery icon (bottom-left) to upload a video instead."
+          : "Couldn't record video. Please try again.",
+      );
     } finally {
       setRecording(false);
       clearTimer();
@@ -179,13 +208,17 @@ export default function CameraScreen() {
 
   return (
     <View style={styles.container}>
-      <CameraView
-        ref={cameraRef}
-        style={StyleSheet.absoluteFill}
-        facing={facing}
-        flash={flash}
-        mode={mode}
-      />
+      {cameraLive ? (
+        <CameraView
+          ref={cameraRef}
+          style={StyleSheet.absoluteFill}
+          facing={facing}
+          flash={flash}
+          mode={mode}
+        />
+      ) : (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: '#000' }]} />
+      )}
 
       {/* Top controls */}
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>

@@ -30,7 +30,7 @@ export default function PointsExplainerScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <ThemedText type="title">Points are how your posts travel further.</ThemedText>
         <ThemedText type="default" themeColor="textSecondary">
-          Fame rewards taking part. The more you join in, the wider your own posts reach. Here&apos;s
+          Phixr rewards taking part. The more you join in, the wider your own posts reach. Here&apos;s
           the whole idea, in plain English.
         </ThemedText>
 

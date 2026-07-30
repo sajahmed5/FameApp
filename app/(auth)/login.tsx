@@ -68,7 +68,7 @@ export default function LoginScreen() {
   return (
     <AuthScreen
       title="Welcome back"
-      subtitle="Log in to your Fame account."
+      subtitle="Log in to your Phixr account."
       footer={
         <>
           <Button title="Log in" onPress={onSubmit} loading={submitting} />
@@ -81,7 +81,7 @@ export default function LoginScreen() {
           <View style={styles.dividerRow}>
             <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
             <ThemedText type="small" themeColor="textSecondary">
-              New to Fame?
+              New to Phixr?
             </ThemedText>
             <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
           </View>

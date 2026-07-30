@@ -19,8 +19,8 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   // `name`/`slug` are required by the ExpoConfig type; inherited from app.json.
-  name: config.name ?? 'Fame',
-  slug: config.slug ?? 'fame',
+  name: config.name ?? 'Phixr',
+  slug: config.slug ?? 'phixr',
   plugins: [
     ...(config.plugins ?? []),
     // Sentry's Expo config plugin: wires the native SDK and, at build time, uploads

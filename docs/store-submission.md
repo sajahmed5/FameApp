@@ -56,6 +56,6 @@ it should be a deliberate choice given the trade-offs above.
 - [ ] Fill Apple privacy labels from `data-collection.md`.
 - [ ] Fill Google Play Data safety from `data-collection.md`.
 - [ ] Complete the age-rating questionnaires from `age-rating.md` (expect 17+ / Mature).
-- [ ] Set the real support email (currently `support@lovefame.co.uk`) and monitor it —
+- [ ] Set the real support email (currently `support@joinphixr.com`) and monitor it —
   required for a UGC app.
 - [ ] Confirm the moderation queue has a staffed reviewer (App Review asks for UGC apps).

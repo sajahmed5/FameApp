@@ -342,7 +342,7 @@ function placeholderFor(mode: SearchMode) {
     case 'local':
       return 'Search nearby';
     default:
-      return 'Search Fame';
+      return 'Search Phixr';
   }
 }
 

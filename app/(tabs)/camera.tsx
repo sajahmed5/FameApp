@@ -175,7 +175,7 @@ export default function CameraScreen() {
           Camera access
         </ThemedText>
         <ThemedText type="default" style={styles.explainBody}>
-          Fame needs your camera to capture photos and videos to post. We only use it while
+          Phixr needs your camera to capture photos and videos to post. We only use it while
           you&apos;re on this screen.
         </ThemedText>
         {blocked ? (

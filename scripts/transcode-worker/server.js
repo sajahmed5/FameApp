@@ -1,5 +1,5 @@
 // ============================================================================
-// Fame video transcode worker (Cloud Run).
+// Phixr video transcode worker (Cloud Run).
 //
 // Implements the VideoTranscoder contract that supabase/functions/media-pipeline
 // hands off to (see video.ts). It:

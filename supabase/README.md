@@ -1,6 +1,6 @@
-# Fame — Database schema
+# Phixr — Database schema
 
-SQL migrations for the Fame Postgres/Supabase database. Auth credentials live in
+SQL migrations for the Phixr Postgres/Supabase database. Auth credentials live in
 `auth.users` (Supabase Auth); all public user data hangs off it via
 `profiles.id → auth.users(id)`.
 

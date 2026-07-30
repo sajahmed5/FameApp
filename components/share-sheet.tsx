@@ -153,7 +153,7 @@ export function ShareSheet({
 
   const shareExternally = async () => {
     const url = postLink(post.id);
-    const text = post.caption ? `${post.caption} — on Fame` : 'Check this out on Fame';
+    const text = post.caption ? `${post.caption} — on Phixr` : 'Check this out on Phixr';
     try {
       await Share.share({ message: `${text} ${url}`, url });
       awardShare(post.id);

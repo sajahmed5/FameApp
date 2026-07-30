@@ -129,7 +129,7 @@ function compose(n: Notification, actor: string): { title: string; body: string 
     case 'reach_milestone': return { title: 'Your post is taking off 🎉', body: `Your post has reached ${fmt(n.payload.milestone)}+ people` };
     case 'message': return { title: at, body: n.count > 1 ? `${n.count} new messages` : 'Sent you a message' };
     case 'moderation': return moderationMsg(String(n.payload.status ?? ''));
-    default: return { title: 'Fame', body: 'You have a new notification' };
+    default: return { title: 'Phixr', body: 'You have a new notification' };
   }
 }
 

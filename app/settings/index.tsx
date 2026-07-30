@@ -151,7 +151,7 @@ export default function SettingsScreen() {
           />
           <ToggleRow
             label="Share anonymous usage data"
-            sublabel="Helps improve Fame. Never your identity, and never which posts you swipe."
+            sublabel="Helps improve Phixr. Never your identity, and never which posts you swipe."
             value={shareUsage}
             onValueChange={toggleUsage}
           />
@@ -246,7 +246,7 @@ export default function SettingsScreen() {
             label="Contact support"
             onPress={() =>
               void Linking.openURL(
-                `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Fame support')}`,
+                `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Phixr support')}`,
               )
             }
           />
@@ -301,7 +301,7 @@ export default function SettingsScreen() {
         </Group>
 
         <ThemedText type="small" themeColor="textSecondary" style={styles.version}>
-          Fame {Application.nativeApplicationVersion ?? '1.0.0'} ({Application.nativeBuildVersion ?? '—'})
+          Phixr {Application.nativeApplicationVersion ?? '1.0.0'} ({Application.nativeBuildVersion ?? '—'})
         </ThemedText>
       </ScrollView>
     </ThemedView>

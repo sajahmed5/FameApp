@@ -7,13 +7,13 @@ import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
 import { BRAND } from '@/constants/config';
 
-const SUPPORT_EMAIL = 'support@lovefame.co.uk';
+const SUPPORT_EMAIL = 'support@joinphixr.com';
 
 /**
  * Recovery for a LOST EMAIL account (distinct from a forgotten password, which is handled
  * by the email reset link in (auth)/forgot-password).
  *
- * Fame deliberately does not collect a phone number (see the store-submission doc), so
+ * Phixr deliberately does not collect a phone number (see the store-submission doc), so
  * there is no SMS second factor to fall back on. When someone can no longer access the
  * email on their account, recovery is support-mediated with identity verification — the
  * secure option that doesn't add a SIM-swappable recovery channel.
@@ -22,7 +22,7 @@ export default function RecoverScreen() {
   const contact = () => {
     const subject = encodeURIComponent('Account recovery — lost email access');
     const body = encodeURIComponent(
-      'I have lost access to the email on my Fame account.\n\n' +
+      'I have lost access to the email on my Phixr account.\n\n' +
         'My handle: @\nThe email I signed up with: \n\nPlease help me recover access.',
     );
     void Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`);

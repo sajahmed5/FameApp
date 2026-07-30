@@ -1,4 +1,4 @@
-# Fame video transcode worker — Node + ffmpeg, for Cloud Run.
+# Phixr video transcode worker — Node + ffmpeg, for Cloud Run.
 # Node 22 (not 20): supabase-js's realtime client needs native WebSocket, which
 # only exists in Node 22+.
 FROM node:22-slim

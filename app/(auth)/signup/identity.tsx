@@ -82,7 +82,7 @@ export default function SignupIdentityScreen() {
     ? !dob
       ? 'Enter your date of birth.'
       : dobState === 'under13'
-        ? 'You must be at least 13 to use Fame.'
+        ? 'You must be at least 13 to use Phixr.'
         : null
     : null;
 
@@ -231,7 +231,7 @@ export default function SignupIdentityScreen() {
 
       {dobState === 'under13' ? (
         <FormMessage tone="error">
-          You need to be at least 13 years old to create a Fame account.
+          You need to be at least 13 years old to create a Phixr account.
         </FormMessage>
       ) : dobState === 'minor' ? (
         <FormMessage tone="info">

@@ -5,7 +5,7 @@ import { getConversations, type Conversation } from '@/lib/messages';
 import { supabase } from '@/lib/supabase';
 
 // Universal-link host for shared posts — the public web page + deep-link target.
-const POST_LINK_BASE = 'https://lovefame.co.uk/post';
+const POST_LINK_BASE = 'https://joinphixr.com/post';
 
 export type SharePerson = { id: string; handle: string; display_name: string; avatar_url: string | null };
 
@@ -55,13 +55,13 @@ export function postLink(postId: string): string {
  */
 export async function shareCard(card: DeckCard): Promise<void> {
   const url = `${POST_LINK_BASE}/${card.id}`;
-  const text = card.caption ? `${card.caption} — on Fame` : 'Check this out on Fame';
+  const text = card.caption ? `${card.caption} — on Phixr` : 'Check this out on Phixr';
 
   try {
     if (Platform.OS === 'web') {
       const nav = typeof navigator !== 'undefined' ? navigator : undefined;
       if (nav?.share) {
-        await nav.share({ title: 'Fame', text, url });
+        await nav.share({ title: 'Phixr', text, url });
         void recordShare(card.id);
       }
       // else: no web share support — the in-app picker (above) will cover this in V2.

@@ -42,7 +42,7 @@ export default function AcceptTermsScreen() {
         </ThemedText>
         <ThemedText type="default" themeColor="textSecondary" style={styles.center}>
           Our Terms of Service and Privacy Policy have changed. Please review and accept
-          them to keep using Fame.
+          them to keep using Phixr.
         </ThemedText>
         <View style={styles.links}>
           <Pressable onPress={() => router.push('/legal/terms')}>

@@ -73,7 +73,7 @@ Deno.serve(
 
       // 3. Write the archive to the private exports bucket + return a signed link.
       const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const archiveKey = `${uid}/fame-export-${stamp}.json`;
+      const archiveKey = `${uid}/phixr-export-${stamp}.json`;
       const archive = JSON.stringify({ generated_at: new Date().toISOString(), data: exportData, media }, null, 2);
       const { error: upErr } = await svc.storage
         .from('exports')

@@ -1,22 +1,22 @@
 {
   "expo": {
-    "name": "Fame",
-    "slug": "fame",
+    "name": "Phixr",
+    "slug": "phixr",
     "owner": "sajahmed5",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "fame",
+    "scheme": "phixr",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "icon": "./assets/expo.icon",
       "supportsTablet": true,
-      "bundleIdentifier": "com.fameapp.fame",
-      "associatedDomains": ["applinks:lovefame.co.uk", "applinks:www.lovefame.co.uk"]
+      "bundleIdentifier": "com.phixr.app",
+      "associatedDomains": ["applinks:joinphixr.com", "applinks:www.joinphixr.com"]
     },
     "android": {
-      "package": "com.fameapp.fame",
+      "package": "com.phixr.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -29,8 +29,8 @@
           "action": "VIEW",
           "autoVerify": true,
           "data": [
-            { "scheme": "https", "host": "lovefame.co.uk", "pathPrefix": "/post" },
-            { "scheme": "https", "host": "www.lovefame.co.uk", "pathPrefix": "/post" }
+            { "scheme": "https", "host": "joinphixr.com", "pathPrefix": "/post" },
+            { "scheme": "https", "host": "www.joinphixr.com", "pathPrefix": "/post" }
           ],
           "category": ["BROWSABLE", "DEFAULT"]
         },
@@ -38,8 +38,8 @@
           "action": "VIEW",
           "autoVerify": true,
           "data": [
-            { "scheme": "https", "host": "lovefame.co.uk", "pathPrefix": "/u" },
-            { "scheme": "https", "host": "www.lovefame.co.uk", "pathPrefix": "/u" }
+            { "scheme": "https", "host": "joinphixr.com", "pathPrefix": "/u" },
+            { "scheme": "https", "host": "www.joinphixr.com", "pathPrefix": "/u" }
           ],
           "category": ["BROWSABLE", "DEFAULT"]
         }
@@ -58,22 +58,22 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Fame uses your location only when you choose to add where a post was taken. It's stored as a coarse area, never your exact position."
+          "locationWhenInUsePermission": "Phixr uses your location only when you choose to add where a post was taken. It's stored as a coarse area, never your exact position."
         }
       ],
       "@react-native-community/datetimepicker",
       [
         "expo-camera",
         {
-          "cameraPermission": "Fame uses the camera so you can capture photos and videos to post.",
-          "microphonePermission": "Fame uses the microphone to record audio for your videos.",
+          "cameraPermission": "Phixr uses the camera so you can capture photos and videos to post.",
+          "microphonePermission": "Phixr uses the microphone to record audio for your videos.",
           "recordAudioAndroid": true
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "Fame needs access to your photos so you can pick existing media to post."
+          "photosPermission": "Phixr needs access to your photos so you can pick existing media to post."
         }
       ],
       [

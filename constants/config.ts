@@ -2,12 +2,12 @@
  * App-wide static configuration and design tokens that aren't part of the light/dark
  * color system in `theme.ts`.
  */
-export const APP_NAME = 'Fame';
+export const APP_NAME = 'Phixr';
 
 /** Support / contact address, used by Settings and the account-recovery flow. */
-export const SUPPORT_EMAIL = 'support@lovefame.co.uk';
+export const SUPPORT_EMAIL = 'support@joinphixr.com';
 
-/** Brand accent — burnt orange, matches the Fame logo. */
+/** Brand accent — burnt orange, matches the Phixr logo. */
 export const BRAND = {
   accent: '#C85A28',
   onAccent: '#FFFFFF',

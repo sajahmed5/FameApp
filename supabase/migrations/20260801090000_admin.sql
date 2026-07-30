@@ -1,6 +1,6 @@
 -- ============================================================================
 -- 20260801090000_admin
--- Backend for the separate Next.js moderation dashboard (portal.lovefame.co.uk).
+-- Backend for the separate Next.js moderation dashboard (portal.joinphixr.com).
 --
 -- The dashboard connects with the SERVICE ROLE key (server-side only) and so
 -- bypasses RLS. Everything here is therefore about (a) giving moderation its own
@@ -10,7 +10,7 @@
 --
 -- Admin accounts are separate from app users: an admin is an auth.users row that
 -- has a matching public.admin_users row. An admin need NOT have a public.profiles
--- row (they are not a Fame user). App auth and admin auth share auth.users but the
+-- row (they are not a Phixr user). App auth and admin auth share auth.users but the
 -- dashboard only admits ids present in admin_users.
 -- ============================================================================
 

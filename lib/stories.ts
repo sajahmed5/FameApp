@@ -57,6 +57,12 @@ export async function markStoryViewed(storyId: string): Promise<void> {
   await supabase.rpc('mark_story_viewed', { _story_id: storyId });
 }
 
+/** Delete one of your own stories (expires it now; the reaper cleans the media). */
+export async function deleteStory(storyId: string): Promise<void> {
+  const { error } = await supabase.rpc('delete_story', { _story_id: storyId });
+  if (error) throw error;
+}
+
 export async function getStoryViewers(storyId: string): Promise<StoryViewer[]> {
   const { data, error } = await supabase.rpc('get_story_viewers', { _story_id: storyId });
   if (error) throw error;

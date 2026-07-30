@@ -21,7 +21,7 @@ import { ActionMenu } from '@/components/ui/action-menu';
 import { useTheme } from '@/hooks/use-theme';
 import { blockUser, reportUser } from '@/lib/profile';
 import { formatRelative } from '@/lib/relative-time';
-import { getStoryViewers, getUserStories, markStoryViewed, replyToStory, type Story, type StoryViewer } from '@/lib/stories';
+import { deleteStory, getStoryViewers, getUserStories, markStoryViewed, replyToStory, type Story, type StoryViewer } from '@/lib/stories';
 import { supabase } from '@/lib/supabase';
 
 const { width: W, height: H } = Dimensions.get('window');
@@ -177,6 +177,36 @@ export default function StoryViewerScreen() {
     setViewers(await getStoryViewers(story.id).catch(() => []));
   };
 
+  const confirmDelete = () => {
+    if (!story?.is_self) return;
+    setPaused(true);
+    Alert.alert('Delete story?', 'This removes it for everyone.', [
+      { text: 'Cancel', style: 'cancel', onPress: () => setPaused(false) },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          const id = story.id;
+          try {
+            await deleteStory(id);
+          } catch {
+            setPaused(false);
+            Alert.alert('Could not delete', 'Please try again.');
+            return;
+          }
+          const remaining = stories.filter((s) => s.id !== id);
+          if (remaining.length === 0) {
+            router.back();
+            return;
+          }
+          setSeg((s) => Math.min(s, remaining.length - 1));
+          setStories(remaining);
+          setPaused(false);
+        },
+      },
+    ]);
+  };
+
   return (
     <View style={styles.container}>
       <GestureDetector gesture={pan}>
@@ -228,9 +258,11 @@ export default function StoryViewerScreen() {
         {ownerAvatar ? <Image source={{ uri: ownerAvatar }} style={styles.headerAvatar} contentFit="cover" /> : <View style={[styles.headerAvatar, { backgroundColor: '#444' }]} />}
         <ThemedText type="smallBold" style={{ color: '#fff', flex: 1 }} numberOfLines={1}>{ownerName}</ThemedText>
         {story ? <ThemedText type="small" style={{ color: 'rgba(255,255,255,0.8)' }}>{formatRelative(story.created_at)}</ThemedText> : null}
-        {!story?.is_self ? (
+        {story?.is_self ? (
+          <Pressable onPress={confirmDelete} hitSlop={8} accessibilityLabel="Delete story"><Ionicons name="trash-outline" size={21} color="#fff" /></Pressable>
+        ) : (
           <Pressable onPress={() => setMenu(true)} hitSlop={8}><Ionicons name="ellipsis-horizontal" size={22} color="#fff" /></Pressable>
-        ) : null}
+        )}
         <Pressable onPress={() => router.back()} hitSlop={8}><Ionicons name="close" size={24} color="#fff" /></Pressable>
       </View>
 

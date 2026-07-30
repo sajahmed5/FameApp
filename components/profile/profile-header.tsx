@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Avatar } from '@/components/ui/avatar';
+import { StoryAvatar } from '@/components/ui/story-avatar';
 import { BRAND } from '@/constants/config';
 import { formatCount } from '@/lib/format';
 import type { ProfileOverview } from '@/lib/profile';
@@ -31,7 +31,7 @@ export function ProfileHeader({
   return (
     <View style={styles.container}>
       <View style={styles.topRow}>
-        <Avatar uri={profile.avatar_url} name={profile.display_name} handle={profile.handle} size={84} />
+        <StoryAvatar userId={profile.id} uri={profile.avatar_url} name={profile.display_name} handle={profile.handle} size={84} />
         {showPointsHero ? (
           // Points are the headline. Posts/Followers/Following move to the compact row below.
           <Pressable

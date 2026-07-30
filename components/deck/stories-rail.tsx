@@ -5,6 +5,7 @@ import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { STORY_RING_SEEN } from '@/constants/config';
 import { useTheme } from '@/hooks/use-theme';
 import { getStoriesRail, type RailItem } from '@/lib/stories';
 
@@ -45,9 +46,8 @@ export function StoriesRail() {
           <View
             style={[
               styles.ring,
-              self?.has_unviewed
-                ? { borderColor: theme.tint }
-                : { borderColor: self?.has_story ? theme.border : 'transparent' },
+              // Your own posted story gets a bright ring so you can tell it's live.
+              { borderColor: self?.has_story ? theme.tint : 'transparent' },
             ]}>
             <Avatar uri={self?.avatar_url} theme={theme} />
             <Pressable
@@ -71,7 +71,7 @@ export function StoriesRail() {
             onPress={() => openViewer(item.user_id)}
             accessibilityRole="button"
             accessibilityLabel={`View ${item.handle ? `@${item.handle}` : "this person"}'s story${item.has_unviewed ? ', new' : ''}`}>
-            <View style={[styles.ring, { borderColor: item.has_unviewed ? theme.tint : theme.border }]}>
+            <View style={[styles.ring, { borderColor: item.has_unviewed ? theme.tint : STORY_RING_SEEN }]}>
               <Avatar uri={item.avatar_url} theme={theme} />
             </View>
             <ThemedText

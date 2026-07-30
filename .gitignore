@@ -49,3 +49,6 @@ supabase/.temp/
 
 # EAS submit credentials (Play service account, etc.)
 secrets/
+
+# Firebase Android config (supplied to builds via the GOOGLE_SERVICES_JSON EAS file env var)
+google-services.json

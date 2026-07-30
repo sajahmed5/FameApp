@@ -87,6 +87,19 @@ export async function blockUser(targetId: string): Promise<void> {
     );
 }
 
+/** Make someone stop following me (removes their follow edge). */
+export async function removeFollower(followerId: string): Promise<void> {
+  const { error } = await supabase.rpc('remove_follower', { _follower: followerId });
+  if (error) throw error;
+}
+
+/** Bulk-set the visibility of ALL my posts. Returns how many changed. */
+export async function setAllPostsVisibility(visibility: 'public' | 'private'): Promise<number> {
+  const { data, error } = await supabase.rpc('set_all_my_posts_visibility', { _visibility: visibility });
+  if (error) throw error;
+  return (data as number) ?? 0;
+}
+
 export async function unblockUser(targetId: string): Promise<void> {
   const { data: u } = await supabase.auth.getUser();
   const { error } = await supabase

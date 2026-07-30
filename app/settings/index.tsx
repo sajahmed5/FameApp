@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { ActionMenu } from '@/components/ui/action-menu';
 import { ThemedView } from '@/components/themed-view';
 import { BRAND, SUPPORT_EMAIL } from '@/constants/config';
 import { useTheme } from '@/hooks/use-theme';
@@ -24,6 +25,7 @@ import {
   deleteAccount,
   getNotificationPrefs,
   requestDataExport,
+  setAllPostsVisibility,
   setNotificationPrefs,
   setPrivacy,
   setSearchRadius,
@@ -38,6 +40,7 @@ export default function SettingsScreen() {
   const { profile, reload, signOut } = useAuth();
 
   const [isPrivate, setIsPrivate] = useState(profile?.is_private ?? false);
+  const [privacyPromptOpen, setPrivacyPromptOpen] = useState(false);
   const [radius, setRadius] = useState(profile?.search_radius_miles ?? 5);
   const [prefs, setPrefs] = useState<NotificationPrefs | null>(null);
   const [shareUsage, setShareUsage] = useState(!analytics.isOptedOut());
@@ -62,6 +65,9 @@ export default function SettingsScreen() {
     try {
       await setPrivacy(v);
       reload();
+      // Going private doesn't hide existing PUBLIC posts (they still surface in the
+      // feed), so offer to make them private too.
+      if (v) setPrivacyPromptOpen(true);
     } catch {
       setIsPrivate(!v);
     }
@@ -291,6 +297,25 @@ export default function SettingsScreen() {
           Phixr {Application.nativeApplicationVersion ?? '1.0.0'} ({Application.nativeBuildVersion ?? '—'})
         </ThemedText>
       </ScrollView>
+      <ActionMenu
+        visible={privacyPromptOpen}
+        title="Your existing posts are still public. Make them private too?"
+        onClose={() => setPrivacyPromptOpen(false)}
+        options={[
+          {
+            label: 'Make all posts private',
+            onPress: async () => {
+              try {
+                const n = await setAllPostsVisibility('private');
+                Alert.alert('Done', n ? `${n} post${n === 1 ? '' : 's'} set to private.` : 'No public posts to change.');
+              } catch {
+                Alert.alert('Something went wrong', 'Could not update your posts. Try again.');
+              }
+            },
+          },
+          { label: 'Keep them public', onPress: () => {} },
+        ]}
+      />
     </ThemedView>
   );
 }

@@ -154,7 +154,7 @@ export function useDeck(fetchBatch: FetchBatch): UseDeck {
         return rest;
       });
     },
-    [fetchMore, prefetchMedia],
+    [fetchMore, prefetchMedia, uid],
   );
 
   const undo = useCallback(() => {

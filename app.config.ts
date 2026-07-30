@@ -1,3 +1,5 @@
+import { existsSync } from 'fs';
+
 import type { ConfigContext, ExpoConfig } from 'expo/config';
 
 /**
@@ -16,11 +18,33 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
  * bundle); it is only kept in env vars to avoid committing environment-specific values
  * and to keep the service-role key — which must NEVER reach the client — out of the app.
  */
+/**
+ * Android push (FCM) needs a `google-services.json` from the Firebase project. It is
+ * resolved in this order:
+ *   1. GOOGLE_SERVICES_JSON — a path, set as an EAS *file* environment variable (the
+ *      recommended route: the file never enters the repo).
+ *   2. ./google-services.json — a committed copy, if you prefer that.
+ * If neither exists the key is omitted entirely: the app still builds and runs, it
+ * just can't receive Android push. Pointing `googleServicesFile` at a missing path
+ * would fail the build outright, which is why this is conditional.
+ */
+function androidGoogleServices(): { googleServicesFile: string } | undefined {
+  const candidates = [process.env.GOOGLE_SERVICES_JSON, './google-services.json'];
+  for (const p of candidates) {
+    if (p && existsSync(p)) return { googleServicesFile: p };
+  }
+  return undefined;
+}
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   // `name`/`slug` are required by the ExpoConfig type; inherited from app.json.
   name: config.name ?? 'Phixr',
   slug: config.slug ?? 'phixr',
+  android: {
+    ...config.android,
+    ...androidGoogleServices(),
+  },
   plugins: [
     ...(config.plugins ?? []),
     // Sentry's Expo config plugin: wires the native SDK and, at build time, uploads

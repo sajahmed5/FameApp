@@ -114,6 +114,7 @@ export function PostGrid({
           <View style={styles.badges}>
             {item.visibility === 'private' ? <Badge icon="lock-closed" /> : null}
             {item.media_type === 'video' ? <Badge icon="videocam" /> : null}
+            {(item.media_count ?? 1) > 1 ? <Badge icon="copy" /> : null}
             {item.moderation_status !== 'approved' ? <Badge icon="time" /> : null}
           </View>
         </Pressable>

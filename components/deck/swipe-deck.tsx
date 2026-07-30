@@ -2,7 +2,7 @@
    `topProgress` passed to the card beneath) are intentionally mutated from worklets; the
    rule's "don't mutate props" heuristic doesn't model shared values. */
 import { Ionicons } from '@expo/vector-icons';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -138,6 +138,10 @@ function DeckCardView({
   canUndo,
   onUndo,
 }: DeckCardViewProps) {
+  // Carousel page for this card. Per-card state, so it resets naturally when the card
+  // is swiped away and a new one takes its place.
+  const [page, setPage] = useState(0);
+  const shotCount = card.carousel?.length ?? 1;
   const x = useSharedValue(0);
   const y = useSharedValue(0);
   // Single-commit latch: once a card is committed (by swipe, double-tap, or a tap button)
@@ -241,7 +245,17 @@ function DeckCardView({
     .runOnJS(true)
     .onEnd(like);
 
-  const gesture = Gesture.Simultaneous(pan, doubleTap);
+  // Single tap pages through a carousel (wrapping at the end). Exclusive() lets the
+  // double-tap win first, so tap-to-advance never steals a like; a single tap simply
+  // resolves once the double-tap window lapses. Left/right swipe still acts on the
+  // whole post, so a carousel is liked/skipped as one thing.
+  const singleTap = Gesture.Tap()
+    .enabled(isTop && shotCount > 1)
+    .numberOfTaps(1)
+    .runOnJS(true)
+    .onEnd(() => setPage((p) => (p + 1) % shotCount));
+
+  const gesture = Gesture.Simultaneous(pan, Gesture.Exclusive(doubleTap, singleTap));
 
   const cardStyle = useAnimatedStyle(() => {
     if (isTop) {
@@ -274,6 +288,7 @@ function DeckCardView({
       <SwipeCard
         card={card}
         isActive={isTop}
+        page={page}
         onOpenComments={isTop ? () => onOpenComments(card) : undefined}
         onLike={isTop ? like : undefined}
         onSkip={isTop ? skip : undefined}

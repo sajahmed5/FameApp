@@ -24,6 +24,8 @@ export type GridPost = {
   media_type: 'image' | 'video';
   visibility: 'public' | 'private';
   moderation_status: 'approved' | 'flagged' | 'pending' | 'removed';
+  /** Total media items (1 = single, >1 = carousel), for the grid's stacked badge. */
+  media_count?: number;
 };
 
 export async function getProfileOverview(handle: string): Promise<ProfileOverview | null> {
@@ -46,8 +48,30 @@ export async function getProfilePosts(userId: string): Promise<GridPost[]> {
     .order('created_at', { ascending: false });
   if (error) throw error;
   const rows = (data ?? []) as GridPost[];
-  const signed = await signMediaPaths(rows.map((r) => r.thumbnail_url));
-  return rows.map((r) => ({ ...r, thumbnail_url: signed.get(r.thumbnail_url) ?? r.thumbnail_url }));
+  const [signed, counts] = await Promise.all([
+    signMediaPaths(rows.map((r) => r.thumbnail_url)),
+    carouselCounts(rows.map((r) => r.id)),
+  ]);
+  return rows.map((r) => ({
+    ...r,
+    thumbnail_url: signed.get(r.thumbnail_url) ?? r.thumbnail_url,
+    media_count: counts.get(r.id) ?? 1,
+  }));
+}
+
+/**
+ * Media count per post (1 = single, >1 = carousel) for the grid's stacked badge.
+ * Never throws — a failure just means no badge.
+ */
+async function carouselCounts(ids: string[]): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  if (ids.length === 0) return out;
+  const { data, error } = await supabase.from('post_media').select('post_id').in('post_id', ids);
+  if (error || !data) return out;
+  for (const row of data as { post_id: string }[]) {
+    out.set(row.post_id, (out.get(row.post_id) ?? 1) + 1);
+  }
+  return out;
 }
 
 // ---- Relationships ---------------------------------------------------------

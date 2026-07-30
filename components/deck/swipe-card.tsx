@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
 import { memo } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,6 +18,7 @@ import { formatCount } from '@/lib/format';
 export const SwipeCard = memo(function SwipeCard({
   card,
   isActive,
+  page = 0,
   onOpenComments,
   onLike,
   onSkip,
@@ -29,6 +29,8 @@ export const SwipeCard = memo(function SwipeCard({
 }: {
   card: DeckCard;
   isActive: boolean;
+  /** Current carousel page (index into card.carousel). Ignored for single-media posts. */
+  page?: number;
   onOpenComments?: () => void;
   onLike?: () => void;
   onSkip?: () => void;
@@ -38,24 +40,23 @@ export const SwipeCard = memo(function SwipeCard({
   onUndo?: () => void;
 }) {
   const insets = useSafeAreaInsets();
+  // Carousel: swap in the current page's media. Left/right swipe still acts on the whole
+  // post (skip/like) — a single tap advances (wired in the deck's gesture composition).
+  const shots = card.carousel;
+  const current = shots?.[Math.min(page, shots.length - 1)];
+  const shown = current ? { ...card, media_url: current.media_url, media_type: current.media_type } : card;
   return (
     <View style={styles.card}>
-      <CardMedia card={card} isActive={isActive} />
+      <CardMedia card={shown} isActive={isActive} />
 
-      {/* Carousel marker. The deck's horizontal swipe is skip/like and double-tap is
-          like, so paging inside the card would fight the core gestures — instead the
-          badge says how many photos there are and opens the post, which has the pager. */}
-      {isActive && (card.media_count ?? 1) > 1 ? (
-        <Pressable
-          onPress={() => router.push(`/post/${card.id}`)}
-          style={[styles.carousel, { top: insets.top + 16 }]}
-          accessibilityRole="button"
-          accessibilityLabel={`${card.media_count} photos — open the post to see them all`}>
+      {/* Position counter — static, so it never competes with tap-to-advance. */}
+      {shots ? (
+        <View style={[styles.carousel, { top: insets.top + 16 }]} pointerEvents="none">
           <Ionicons name="copy" size={13} color="#fff" />
           <ThemedText type="small" style={styles.carouselText}>
-            {card.media_count}
+            {Math.min(page, shots.length - 1) + 1}/{shots.length}
           </ThemedText>
-        </Pressable>
+        </View>
       ) : null}
 
       {/* Top-right: like / skip / comment. Tapping the heart likes, the cross skips —
@@ -108,6 +109,21 @@ export const SwipeCard = memo(function SwipeCard({
       <View
         style={[styles.bottomScrim, { paddingBottom: insets.bottom + TAB_BAR_CLEARANCE }]}
         pointerEvents="box-none">
+        {shots ? (
+          <View style={styles.dots} pointerEvents="none">
+            {shots.map((_, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.dot,
+                  i === Math.min(page, shots.length - 1)
+                    ? styles.dotOn
+                    : styles.dotOff,
+                ]}
+              />
+            ))}
+          </View>
+        ) : null}
         <Pressable
           onPress={isActive && onOpenProfile ? () => onOpenProfile(card.poster_handle) : undefined}
           disabled={!isActive || !onOpenProfile}
@@ -228,6 +244,10 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   carouselText: { color: '#fff', fontWeight: '600' },
+  dots: { flexDirection: 'row', justifyContent: 'center', gap: 6, paddingBottom: 10 },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  dotOn: { backgroundColor: '#fff' },
+  dotOff: { backgroundColor: 'rgba(255,255,255,0.4)' },
   stat: { alignItems: 'center', gap: 2 },
   commentButton: { alignItems: 'center', gap: 2, marginTop: 4 },
   actionButton: { alignItems: 'center', marginTop: 4 },

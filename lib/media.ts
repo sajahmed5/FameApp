@@ -41,32 +41,50 @@ export async function resolveDeckMedia(cards: DeckCard[]): Promise<DeckCard[]> {
     if (isStoragePath(c.media_url)) paths.push(c.media_url);
     if (isStoragePath(c.thumbnail_url)) paths.push(c.thumbnail_url);
   }
-  // Signing and the carousel counts are independent — run them together so the
-  // count costs no extra latency on the deck's critical path.
-  const [signed, counts] = await Promise.all([
+  // Signing the covers and loading the carousel extras are independent — run them
+  // together so carousels cost no extra latency on the deck's critical path.
+  const [signed, extrasMap] = await Promise.all([
     paths.length ? signMediaPaths(paths) : Promise.resolve(new Map<string, string>()),
-    carouselCounts(cards.map((c) => c.id)),
+    carouselExtras(cards.map((c) => c.id)),
   ]);
-  return cards.map((c) => ({
-    ...c,
-    media_url: signed.get(c.media_url) ?? c.media_url,
-    thumbnail_url: signed.get(c.thumbnail_url) ?? c.thumbnail_url,
-    media_count: counts.get(c.id) ?? 1,
-  }));
+  return cards.map((c) => {
+    const media_url = signed.get(c.media_url) ?? c.media_url;
+    const extras = extrasMap.get(c.id);
+    return {
+      ...c,
+      media_url,
+      thumbnail_url: signed.get(c.thumbnail_url) ?? c.thumbnail_url,
+      media_count: 1 + (extras?.length ?? 0),
+      // Cover first, then the extras in position order — what the deck pages through.
+      carousel: extras?.length
+        ? [{ media_url, media_type: c.media_type }, ...extras]
+        : undefined,
+    };
+  });
 }
 
+type CarouselItem = { media_url: string; media_type: 'image' | 'video' };
+
 /**
- * How many media items each post has (1 = single, >1 = carousel). Counts the extra
- * `post_media` rows and adds the cover. Never throws — if the query fails the deck
- * simply shows no carousel badge rather than failing to load.
+ * The extra (position >= 1) media for each post, signed and in order. Never throws —
+ * if the query fails the cards simply render as single-media rather than failing.
  */
-async function carouselCounts(ids: string[]): Promise<Map<string, number>> {
-  const out = new Map<string, number>();
+async function carouselExtras(ids: string[]): Promise<Map<string, CarouselItem[]>> {
+  const out = new Map<string, CarouselItem[]>();
   if (ids.length === 0) return out;
-  const { data, error } = await supabase.from('post_media').select('post_id').in('post_id', ids);
+  const { data, error } = await supabase
+    .from('post_media')
+    .select('post_id, position, media_url, media_type')
+    .in('post_id', ids)
+    .order('position', { ascending: true });
   if (error || !data) return out;
-  for (const row of data as { post_id: string }[]) {
-    out.set(row.post_id, (out.get(row.post_id) ?? 1) + 1);
+  const rows = data as { post_id: string; media_url: string; media_type: 'image' | 'video' }[];
+  if (rows.length === 0) return out;
+  const signed = await signMediaPaths(rows.map((r) => r.media_url).filter(isStoragePath));
+  for (const r of rows) {
+    const list = out.get(r.post_id) ?? [];
+    list.push({ media_url: signed.get(r.media_url) ?? r.media_url, media_type: r.media_type });
+    out.set(r.post_id, list);
   }
   return out;
 }

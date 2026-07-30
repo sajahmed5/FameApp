@@ -22,6 +22,8 @@ export type DeckCard = {
   my_direction?: 'left' | 'right' | null;
   /** Total media items (1 = single). >1 means a carousel; set by resolveDeckMedia. */
   media_count?: number;
+  /** Full ordered media (cover first) — only set when this is a carousel. */
+  carousel?: { media_url: string; media_type: 'image' | 'video' }[];
 };
 
 export type SwipeDirection = 'left' | 'right';

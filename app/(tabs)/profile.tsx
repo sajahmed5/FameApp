@@ -31,7 +31,7 @@ import {
 } from '@/lib/profile';
 
 type Tab = 'posts' | 'liked' | 'skipped' | 'saved';
-type Cell = { id: string; thumbnail_url: string; media_type: 'image' | 'video' };
+type Cell = { id: string; thumbnail_url: string; media_type: 'image' | 'video'; media_count?: number };
 
 export default function ProfileScreen() {
   const theme = useTheme();
@@ -135,7 +135,7 @@ export default function ProfileScreen() {
 
   const cells: Cell[] =
     tab === 'posts'
-      ? (posts ?? []).map((p) => ({ id: p.id, thumbnail_url: p.thumbnail_url, media_type: p.media_type }))
+      ? (posts ?? []).map((p) => ({ id: p.id, thumbnail_url: p.thumbnail_url, media_type: p.media_type, media_count: p.media_count }))
       : tab === 'saved'
         ? (saved ?? []).map((s) => ({ id: s.id, thumbnail_url: s.thumbnail_url, media_type: s.media_type }))
         : (tab === 'liked' ? liked ?? [] : skipped ?? []).map((s) => ({
@@ -239,6 +239,11 @@ export default function ProfileScreen() {
             {item.media_type === 'video' ? (
               <View style={[styles.badge, styles.vidBadge]}>
                 <Ionicons name="videocam" size={12} color="#fff" />
+              </View>
+            ) : null}
+            {(item.media_count ?? 1) > 1 ? (
+              <View style={[styles.badge, styles.vidBadge]}>
+                <Ionicons name="copy" size={12} color="#fff" />
               </View>
             ) : null}
             {tab === 'liked' || tab === 'skipped' ? (

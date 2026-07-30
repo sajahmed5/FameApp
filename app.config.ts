@@ -1,5 +1,3 @@
-import { existsSync } from 'fs';
-
 import type { ConfigContext, ExpoConfig } from 'expo/config';
 
 /**
@@ -19,22 +17,16 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
  * and to keep the service-role key — which must NEVER reach the client — out of the app.
  */
 /**
- * Android push (FCM) needs a `google-services.json` from the Firebase project. It is
- * resolved in this order:
- *   1. GOOGLE_SERVICES_JSON — a path, set as an EAS *file* environment variable (the
- *      recommended route: the file never enters the repo).
- *   2. ./google-services.json — a committed copy, if you prefer that.
- * If neither exists the key is omitted entirely: the app still builds and runs, it
- * just can't receive Android push. Pointing `googleServicesFile` at a missing path
- * would fail the build outright, which is why this is conditional.
+ * Android push (FCM) needs a `google-services.json` from the Firebase project, supplied
+ * via GOOGLE_SERVICES_JSON — an EAS *file* environment variable, whose value is the path
+ * to the file on the build machine (see docs/push-setup.md). When it is unset the key is
+ * omitted entirely: the app still builds and runs, it just can't receive Android push.
+ * Pointing `googleServicesFile` at a missing path would fail the build outright, which
+ * is why this is conditional rather than hardcoded.
  */
-function androidGoogleServices(): { googleServicesFile: string } | undefined {
-  const candidates = [process.env.GOOGLE_SERVICES_JSON, './google-services.json'];
-  for (const p of candidates) {
-    if (p && existsSync(p)) return { googleServicesFile: p };
-  }
-  return undefined;
-}
+const googleServices = process.env.GOOGLE_SERVICES_JSON
+  ? { googleServicesFile: process.env.GOOGLE_SERVICES_JSON }
+  : undefined;
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
@@ -43,7 +35,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   slug: config.slug ?? 'phixr',
   android: {
     ...config.android,
-    ...androidGoogleServices(),
+    ...googleServices,
   },
   plugins: [
     ...(config.plugins ?? []),

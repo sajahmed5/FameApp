@@ -36,18 +36,24 @@ a `google-services.json` **in the app**, and a **service-account key on EAS**.
 
 ### Step 2 — Put the file where the build can see it *(either route)*
 
-**Route A — EAS file environment variable (recommended; keeps it out of the repo):**
+Save the downloaded file to the project root, then register it with EAS as a **file**
+environment variable (the value is a path; EAS stores the contents and materialises the
+file on the build machine):
+
 ```bash
 eas env:create --environment production --name GOOGLE_SERVICES_JSON \
   --type file --value ./google-services.json --visibility sensitive --scope project
-# repeat with --environment preview
+eas env:create --environment preview --name GOOGLE_SERVICES_JSON \
+  --type file --value ./google-services.json --visibility sensitive --scope project
 ```
 
-**Route B — commit it:** drop `google-services.json` in the project root and commit.
-It contains no secrets (it ships inside every APK anyway).
+For **local** native runs, add the same line to `.env`:
+```
+GOOGLE_SERVICES_JSON=./google-services.json
+```
 
-`app.config.ts` picks up either automatically — env var first, then the local file —
-and omits the setting entirely when neither exists, so the build never breaks.
+`app.config.ts` reads that variable and omits the setting entirely when it is unset,
+so builds stay green until the file exists.
 
 ### Step 3 — Give EAS the FCM V1 service-account key *(you)*
 

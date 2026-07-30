@@ -9,10 +9,13 @@ import { NotificationBellButton } from '@/components/notification-bell-button';
 import { SettingsGearButton } from '@/components/settings-gear-button';
 import { BRAND, TAB_BAR } from '@/constants/config';
 import { useTheme } from '@/hooks/use-theme';
+import { useInboxBadge, useInboxBadgeUpdater } from '@/lib/inbox-badge';
 
 export default function TabsLayout() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  useInboxBadgeUpdater();
+  const inboxBadge = useInboxBadge();
 
   return (
     <Tabs
@@ -87,11 +90,13 @@ export default function TabsLayout() {
         }}
       />
 
-      {/* 4. Messages — stub ("Coming soon") */}
+      {/* 4. Messages */}
       <Tabs.Screen
         name="messages"
         options={{
           title: 'Messages',
+          tabBarBadge: inboxBadge > 0 ? inboxBadge : undefined,
+          tabBarBadgeStyle: { backgroundColor: BRAND.accent, color: BRAND.onAccent, fontSize: 11 },
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons
               name={focused ? 'chatbubble' : 'chatbubble-outline'}

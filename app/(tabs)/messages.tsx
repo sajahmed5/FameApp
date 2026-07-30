@@ -19,6 +19,7 @@ import {
   type Conversation,
 } from '@/lib/messages';
 import { confirm } from '@/lib/confirm';
+import { markInboxSeen } from '@/lib/inbox-badge';
 import { useRefresh } from '@/lib/use-refresh';
 import { TAB_BAR_CLEARANCE } from '@/constants/config';
 
@@ -47,6 +48,7 @@ export default function MessagesScreen() {
   // Reload on focus + live-refresh when a message lands in any of my conversations.
   useFocusEffect(
     useCallback(() => {
+      markInboxSeen(); // clear the tab badge on open (even if messages stay unread)
       void load();
       const unsub = subscribeToInbox(() => void load());
       return unsub;

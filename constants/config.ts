@@ -7,9 +7,9 @@ export const APP_NAME = 'Phixr';
 /** Support / contact address, used by Settings and the account-recovery flow. */
 export const SUPPORT_EMAIL = 'support@joinphixr.com';
 
-/** Brand accent — burnt orange, matches the Phixr logo. */
+/** Brand accent — phixr core orange (#FF7A18), from the logo gradient. */
 export const BRAND = {
-  accent: '#C85A28',
+  accent: '#FF7A18',
   onAccent: '#FFFFFF',
 } as const;
 

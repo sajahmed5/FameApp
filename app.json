@@ -10,7 +10,6 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "icon": "./assets/expo.icon",
       "supportsTablet": true,
       "bundleIdentifier": "com.phixr.app",
       "associatedDomains": ["applinks:joinphixr.com", "applinks:www.joinphixr.com"]
@@ -18,10 +17,8 @@
     "android": {
       "package": "com.phixr.app",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundColor": "#FF7A18",
+        "foregroundImage": "./assets/images/icon.png"
       },
       "predictiveBackGestureEnabled": false,
       "intentFilters": [
@@ -79,13 +76,13 @@
       [
         "expo-notifications",
         {
-          "color": "#C85A28"
+          "color": "#FF7A18"
         }
       ],
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#C85A28",
+          "backgroundColor": "#FF7A18",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }

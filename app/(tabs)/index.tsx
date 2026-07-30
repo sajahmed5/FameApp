@@ -3,7 +3,8 @@ import { ThemedView } from '@/components/themed-view';
 import { DeckView } from '@/components/deck/deck-view';
 import { fetchDeck } from '@/lib/deck';
 
-/** Home — the worldwide, ranked feed. Just the shared deck fed by the worldwide pool. */
+/** Home — the worldwide, ranked feed. Just the shared deck fed by the worldwide pool.
+ * The phixr lockup lives in the tab's header (see (tabs)/_layout.tsx). */
 export default function HomeScreen() {
   return (
     <ThemedView style={{ flex: 1 }}>

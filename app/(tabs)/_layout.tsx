@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CameraTabButton } from '@/components/camera-tab-button';
+import { PhixrLockup } from '@/components/brand/phixr-logo';
 import { HeaderSearchButton } from '@/components/header-search-button';
 import { NotificationBellButton } from '@/components/notification-bell-button';
 import { SettingsGearButton } from '@/components/settings-gear-button';
@@ -57,6 +58,10 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Home',
+          // The phixr lockup IS the Home header — left-aligned, so it reads as "our app",
+          // not a generic feed.
+          headerTitle: () => <PhixrLockup height={24} />,
+          headerTitleAlign: 'left',
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={color} />
           ),

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+<defs>
+  <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#FF9D2E"/><stop offset="0.55" stop-color="#FF7A18"/><stop offset="1" stop-color="#F5510E"/></linearGradient>
+  <radialGradient id="bgGlow" cx="0.5" cy="0.3" r="0.9">
+    <stop offset="0" stop-color="#FFC46B" stop-opacity="0.9"/><stop offset="0.5" stop-color="#FFC46B" stop-opacity="0"/></radialGradient>
+  <linearGradient id="wordGrad" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#FF7A18"/><stop offset="1" stop-color="#F5510E"/></linearGradient>
+  <linearGradient id="tileGrad" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#FFF0E4"/></linearGradient>
+</defs>
+<rect width="512" height="512" fill="url(#bgGrad)"/>
+<rect width="512" height="512" fill="url(#bgGlow)"/>
+<g transform="rotate(-18 158.0 354.0)"><path d="M136.4,304.0 H179.6 Q194.0,304.0 194.0,318.4 V389.6 Q194.0,404.0 179.6,404.0 H136.4 Q122.0,404.0 122.0,389.6 V318.4 Q122.0,304.0 136.4,304.0 Z" fill="#FFFFFF" opacity="0.72"/></g>
+<g transform="rotate(18 328.0 176.0)"><path d="M301.6,114.88888888888889 H354.4 Q372.0,114.88888888888889 372.0,132.48888888888888 V219.51111111111112 Q372.0,237.11111111111111 354.4,237.11111111111111 H301.6 Q284.0,237.11111111111111 284.0,219.51111111111112 V132.48888888888888 Q284.0,114.88888888888889 301.6,114.88888888888889 Z" fill="#FFFFFF" opacity="0.92"/></g>
+<g transform="rotate(-8 228.0 274.0)"><path d="M191.4,189.27777777777777 H264.6 Q289.0,189.27777777777777 289.0,213.67777777777778 V334.32222222222225 Q289.0,358.72222222222223 264.6,358.72222222222223 H191.4 Q167.0,358.72222222222223 167.0,334.32222222222225 V213.67777777777778 Q167.0,189.27777777777777 191.4,189.27777777777777 Z" fill="url(#tileGrad)" opacity="1.0"/></g>
+</svg>

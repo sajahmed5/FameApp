@@ -38,18 +38,21 @@ export function StoriesRail() {
   return (
     <View style={[styles.container, { borderBottomColor: theme.border }]}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <Pressable
-          style={styles.item}
-          onPress={() => (self?.has_story ? openViewer(self.user_id) : create())}
-          accessibilityRole="button"
-          accessibilityLabel={self?.has_story ? 'View your story' : 'Add to your story'}>
+        {/* Container is a plain View: the avatar and the "+" are SIBLING buttons, never
+            nested (nested <button>s are invalid DOM and error on web). */}
+        <View style={styles.item}>
           <View
             style={[
               styles.ring,
               // Your own posted story gets a bright ring so you can tell it's live.
               { borderColor: self?.has_story ? theme.tint : 'transparent' },
             ]}>
-            <Avatar uri={self?.avatar_url} theme={theme} />
+            <Pressable
+              onPress={() => (self?.has_story ? openViewer(self.user_id) : create())}
+              accessibilityRole="button"
+              accessibilityLabel={self?.has_story ? 'View your story' : 'Add to your story'}>
+              <Avatar uri={self?.avatar_url} theme={theme} />
+            </Pressable>
             <Pressable
               onPress={create}
               style={[styles.add, { backgroundColor: theme.tint, borderColor: theme.background }]}
@@ -62,7 +65,7 @@ export function StoriesRail() {
           <ThemedText type="small" themeColor="textSecondary" numberOfLines={1} style={styles.label}>
             Your story
           </ThemedText>
-        </Pressable>
+        </View>
 
         {others.map((item) => (
           <Pressable

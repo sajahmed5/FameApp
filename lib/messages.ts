@@ -209,10 +209,17 @@ export async function reactToMessage(messageId: string, emoji: string): Promise<
   if (error) throw error;
 }
 
+// Each subscriber gets a UNIQUE channel topic. Supabase realtime rejects adding
+// postgres_changes handlers to an already-subscribed topic, so two subscribers
+// sharing a hardcoded name (e.g. the inbox badge + the Messages screen) would throw
+// "cannot add postgres_changes callbacks after subscribe()". A per-call suffix avoids that.
+let channelSeq = 0;
+const uniqueChannel = (base: string) => `${base}:${(channelSeq += 1)}`;
+
 /** Realtime: fire on any reaction change (INSERT/UPDATE/DELETE). */
 export function subscribeToReactions(onChange: () => void): () => void {
   const channel = supabase
-    .channel('reactions')
+    .channel(uniqueChannel('reactions'))
     .on('postgres_changes', { event: '*', schema: 'public', table: 'message_reactions' }, () => onChange())
     .subscribe();
   return () => {
@@ -234,7 +241,7 @@ export async function markConversationUnread(cid: string): Promise<void> {
 
 export function subscribeToInbox(onChange: () => void): () => void {
   const channel = supabase
-    .channel('inbox')
+    .channel(uniqueChannel('inbox'))
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => onChange())
     .subscribe();
   return () => {

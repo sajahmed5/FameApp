@@ -6,6 +6,7 @@ import { memo, useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CollectionPicker } from '@/components/collection-picker';
 import { CommentSheet } from '@/components/comments/comment-sheet';
 import { FollowingEmpty } from '@/components/deck/following-empty';
 import { StoriesRail } from '@/components/deck/stories-rail';
@@ -14,6 +15,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Avatar } from '@/components/ui/avatar';
 import { BRAND, TAB_BAR_CLEARANCE } from '@/constants/config';
 import { useTheme } from '@/hooks/use-theme';
+import { getBookmarkState } from '@/lib/bookmarks';
 import { fetchFollowingFeed, recordSwipe, type DeckCard } from '@/lib/deck';
 import { formatCount } from '@/lib/format';
 import { resolveDeckMedia } from '@/lib/media';
@@ -140,8 +142,21 @@ const FeedCard = memo(function FeedCard({
 }) {
   const theme = useTheme();
   const router = useRouter();
-  const [liked, setLiked] = useState(false);
+  // Pre-fill the heart if you already swiped right on this post (e.g. from the main deck).
+  const [liked, setLiked] = useState(card.my_direction === 'right');
   const [likeCount, setLikeCount] = useState(card.like_count);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    void getBookmarkState(card.id)
+      .then((s) => alive && setSaved(s.saved))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [card.id]);
 
   // Like = a private right-swipe (same commit path as the deck). One-way for now.
   const like = () => {
@@ -195,7 +210,15 @@ const FeedCard = memo(function FeedCard({
         <Pressable onPress={onOpenShare} hitSlop={8} style={styles.actionBtn} accessibilityRole="button" accessibilityLabel="Share">
           <Ionicons name="paper-plane-outline" size={22} color={theme.text} />
         </Pressable>
+        <View style={{ flex: 1 }} />
+        <Pressable onPress={() => setSaveOpen(true)} hitSlop={8} style={styles.actionBtn} accessibilityRole="button" accessibilityLabel={saved ? 'Saved — edit collection' : 'Save'}>
+          <Ionicons name={saved ? 'bookmark' : 'bookmark-outline'} size={22} color={saved ? BRAND.accent : theme.text} />
+        </Pressable>
       </View>
+
+      {saveOpen ? (
+        <CollectionPicker postId={card.id} visible={saveOpen} onClose={() => setSaveOpen(false)} onChange={setSaved} />
+      ) : null}
 
       {card.caption ? (
         <ThemedText type="default" style={styles.caption} numberOfLines={5}>

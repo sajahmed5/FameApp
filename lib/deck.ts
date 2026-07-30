@@ -18,6 +18,8 @@ export type DeckCard = {
   poster_display_name: string;
   poster_avatar_url: string | null;
   tags: string[];
+  /** The caller's own swipe on this post, if any (Following feed uses it to pre-fill the heart). */
+  my_direction?: 'left' | 'right' | null;
 };
 
 export type SwipeDirection = 'left' | 'right';

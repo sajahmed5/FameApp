@@ -43,6 +43,7 @@ export default function SignupAccountScreen() {
 
   return (
     <AuthScreen
+      brand
       title="Create your account"
       subtitle="Step 1 of 3 — your login details."
       onBack={() => router.back()}

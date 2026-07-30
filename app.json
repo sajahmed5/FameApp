@@ -9,7 +9,7 @@
     "scheme": "phixr",
     "userInterfaceStyle": "automatic",
     "updates": {
-      "url": "https://u.expo.dev/ce6bcabb-42f6-4ae2-90d7-5ca670af9229"
+      "url": "https://u.expo.dev/8f7fb6b4-3c8c-42fb-a340-99f89b96b751"
     },
     "runtimeVersion": {
       "policy": "fingerprint"
@@ -20,7 +20,10 @@
         "ITSAppUsesNonExemptEncryption": false
       },
       "bundleIdentifier": "com.phixr.app",
-      "associatedDomains": ["applinks:joinphixr.com", "applinks:www.joinphixr.com"]
+      "associatedDomains": [
+        "applinks:joinphixr.com",
+        "applinks:www.joinphixr.com"
+      ]
     },
     "android": {
       "package": "com.phixr.app",
@@ -34,19 +37,41 @@
           "action": "VIEW",
           "autoVerify": true,
           "data": [
-            { "scheme": "https", "host": "joinphixr.com", "pathPrefix": "/post" },
-            { "scheme": "https", "host": "www.joinphixr.com", "pathPrefix": "/post" }
+            {
+              "scheme": "https",
+              "host": "joinphixr.com",
+              "pathPrefix": "/post"
+            },
+            {
+              "scheme": "https",
+              "host": "www.joinphixr.com",
+              "pathPrefix": "/post"
+            }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         },
         {
           "action": "VIEW",
           "autoVerify": true,
           "data": [
-            { "scheme": "https", "host": "joinphixr.com", "pathPrefix": "/u" },
-            { "scheme": "https", "host": "www.joinphixr.com", "pathPrefix": "/u" }
+            {
+              "scheme": "https",
+              "host": "joinphixr.com",
+              "pathPrefix": "/u"
+            },
+            {
+              "scheme": "https",
+              "host": "www.joinphixr.com",
+              "pathPrefix": "/u"
+            }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -102,7 +127,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "ce6bcabb-42f6-4ae2-90d7-5ca670af9229"
+        "projectId": "8f7fb6b4-3c8c-42fb-a340-99f89b96b751"
       }
     }
   }

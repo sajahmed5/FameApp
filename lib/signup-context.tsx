@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
 
 /**
  * In-memory-only draft for the multi-step signup flow.
@@ -37,24 +37,24 @@ const SignupContext = createContext<SignupContextValue | undefined>(undefined);
 
 export function SignupProvider({ children }: { children: ReactNode }) {
   const [draft, setDraft] = useState<SignupDraft>(EMPTY);
-  const hasAccountStep = useRef(false);
+  const [hasAccountStep, setHasAccountStep] = useState(false);
 
   const value = useMemo<SignupContextValue>(
     () => ({
       draft,
       update: (patch) => {
         if (patch.email !== undefined || patch.password !== undefined) {
-          hasAccountStep.current = true;
+          setHasAccountStep(true);
         }
         setDraft((prev) => ({ ...prev, ...patch }));
       },
       reset: () => {
-        hasAccountStep.current = false;
+        setHasAccountStep(false);
         setDraft(EMPTY);
       },
-      hasAccountStep: hasAccountStep.current,
+      hasAccountStep,
     }),
-    [draft],
+    [draft, hasAccountStep],
   );
 
   return <SignupContext.Provider value={value}>{children}</SignupContext.Provider>;

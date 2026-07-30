@@ -27,18 +27,24 @@ import { uploadToPipeline } from '@/lib/upload';
 import {
   deleteMessage,
   getConversation,
+  getMessageReactions,
   getMessages,
   leaveConversation,
   markRead,
+  reactToMessage,
   reportConversation,
   reportMessage,
   respondToRequest,
   sendMessage,
   setMuted,
+  subscribeToReactions,
   subscribeToThread,
   type ConversationDetail,
   type Message,
+  type MessageReaction,
 } from '@/lib/messages';
+
+const QUICK_REACTIONS = ['❤️', '😂', '👍', '😮', '😢', '💯'];
 
 const PAGE = 30;
 const REPORT_REASONS = ['Spam', 'Harassment or hate', 'Inappropriate content', 'Other'];
@@ -84,6 +90,7 @@ export default function ConversationScreen() {
   const [menu, setMenu] = useState(false);
   const [reportTarget, setReportTarget] = useState<Message | 'conversation' | null>(null);
   const [msgMenu, setMsgMenu] = useState<Message | null>(null);
+  const [reactions, setReactions] = useState<MessageReaction[]>([]);
 
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTypingSent = useRef(0);
@@ -93,6 +100,15 @@ export default function ConversationScreen() {
   const myHandle = useMemo(() => detail?.members.find((m) => m.id === meId)?.handle ?? 'Someone', [detail, meId]);
   const title = detail?.type === 'group' ? detail?.name ?? 'Group' : other?.display_name ?? other?.handle ?? '';
 
+  const refreshReactions = useCallback(async () => {
+    if (!cid) return;
+    try {
+      setReactions(await getMessageReactions(cid));
+    } catch {
+      /* ignore */
+    }
+  }, [cid]);
+
   const refresh = useCallback(async () => {
     if (!cid) return;
     const [d, msgs] = await Promise.all([getConversation(cid), getMessages(cid, PAGE)]);
@@ -100,7 +116,29 @@ export default function ConversationScreen() {
     setMessages(msgs);
     setHasOlder(msgs.length === PAGE);
     void markRead(cid);
-  }, [cid]);
+    void refreshReactions();
+  }, [cid, refreshReactions]);
+
+  // React to a message (double-tap → 💯, or the reaction row). Toggles off if I tap the
+  // same emoji again. Optimistic; realtime + refetch reconcile.
+  const reactTo = useCallback(
+    async (messageId: string, emoji: string) => {
+      if (!meId) return;
+      const mineNow = reactions.find((r) => r.message_id === messageId && r.user_id === meId);
+      const target = mineNow?.emoji === emoji ? '' : emoji;
+      setReactions((prev) => {
+        const others = prev.filter((r) => !(r.message_id === messageId && r.user_id === meId));
+        return target ? [...others, { message_id: messageId, user_id: meId, emoji: target }] : others;
+      });
+      setMsgMenu(null);
+      try {
+        await reactToMessage(messageId, target);
+      } catch {
+        void refreshReactions();
+      }
+    },
+    [reactions, meId, refreshReactions],
+  );
 
   // initial load + realtime subscription
   useEffect(() => {
@@ -120,12 +158,14 @@ export default function ConversationScreen() {
       },
     });
     sendTypingRef.current = sub.sendTyping;
+    const unsubReacts = subscribeToReactions(() => void refreshReactions());
     return () => {
       alive = false;
       sub.unsubscribe();
+      unsubReacts();
       if (typingTimer.current) clearTimeout(typingTimer.current);
     };
-  }, [cid, refresh, meId]);
+  }, [cid, refresh, refreshReactions, meId]);
 
   const loadOlder = useCallback(async () => {
     if (loadingOlder || !hasOlder || messages.length === 0) return;
@@ -259,6 +299,8 @@ export default function ConversationScreen() {
               meId={meId}
               isGroup={detail?.type === 'group'}
               seen={isSeen(item, detail, meId)}
+              reactions={'tempId' in item ? [] : reactions.filter((r) => r.message_id === item.id)}
+              onReact={reactTo}
               onLongPress={(m) => setMsgMenu(m)}
               onRetry={(p) => void doSend({ body: p.body ?? undefined, mediaUri: p.mediaUri ?? undefined, replyToId: p.replyToId ?? undefined, tempId: p.tempId })}
               onOpenPost={(pid) => router.push({ pathname: '/post/[id]', params: { id: pid } })}
@@ -301,9 +343,11 @@ export default function ConversationScreen() {
       <ActionMenu visible={menu} options={menuOptions()} onClose={() => setMenu(false)} />
       <ActionMenu
         visible={!!msgMenu}
+        title={msgMenu ? `React:  ${QUICK_REACTIONS.join('   ')}` : undefined}
         options={
           msgMenu
             ? [
+                ...QUICK_REACTIONS.map((e) => ({ label: `React ${e}`, onPress: () => void reactTo(msgMenu.id, e) })),
                 { label: 'Reply', onPress: () => setReply(msgMenu) },
                 ...(msgMenu.sender_id === meId && !msgMenu.deleted_at
                   ? [{ label: 'Delete', destructive: true, onPress: async () => { if (!(await confirm('Delete message?', 'This removes it for everyone.', 'Delete'))) return; await deleteMessage(msgMenu.id); void refresh(); } }]
@@ -355,6 +399,8 @@ function MessageBubble({
   meId,
   isGroup,
   seen,
+  reactions,
+  onReact,
   onLongPress,
   onRetry,
   onOpenPost,
@@ -364,6 +410,8 @@ function MessageBubble({
   meId?: string;
   isGroup?: boolean;
   seen: boolean;
+  reactions: MessageReaction[];
+  onReact: (messageId: string, emoji: string) => void;
   onLongPress: (m: Message) => void;
   onRetry: (p: Pending) => void;
   onOpenPost: (pid: string) => void;
@@ -374,9 +422,31 @@ function MessageBubble({
   const deleted = !isPending && !!item.deleted_at;
   const bubbleColor = mine ? theme.tint : theme.backgroundElement;
   const textColor = mine ? '#fff' : theme.text;
+  const lastTap = useRef(0);
+
+  // Aggregate reactions by emoji (with count + whether I reacted with it).
+  const grouped = new Map<string, { count: number; mine: boolean }>();
+  for (const r of reactions) {
+    const g = grouped.get(r.emoji) ?? { count: 0, mine: false };
+    g.count += 1;
+    if (r.user_id === meId) g.mine = true;
+    grouped.set(r.emoji, g);
+  }
+
+  const onTap = () => {
+    if (isPending || deleted) return;
+    const now = Date.now();
+    if (now - lastTap.current < 300) {
+      onReact(item.id, '💯'); // double-tap → 💯
+      lastTap.current = 0;
+    } else {
+      lastTap.current = now;
+    }
+  };
 
   return (
     <Pressable
+      onPress={onTap}
       onLongPress={() => !isPending && !deleted && onLongPress(item)}
       style={[styles.bubbleRow, { justifyContent: mine ? 'flex-end' : 'flex-start' }]}>
       <View style={{ maxWidth: '78%' }}>
@@ -410,6 +480,21 @@ function MessageBubble({
             </>
           )}
         </View>
+        {grouped.size > 0 ? (
+          <View style={[styles.reactionRow, { justifyContent: mine ? 'flex-end' : 'flex-start' }]}>
+            {[...grouped.entries()].map(([emoji, g]) => (
+              <Pressable
+                key={emoji}
+                onPress={() => !isPending && onReact(item.id, emoji)}
+                style={[styles.reactionChip, { backgroundColor: g.mine ? theme.tint : theme.backgroundElement, borderColor: theme.border }]}>
+                <ThemedText type="small" style={{ color: g.mine ? '#fff' : theme.text }}>
+                  {emoji}
+                  {g.count > 1 ? ` ${g.count}` : ''}
+                </ThemedText>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
         <View style={[styles.meta, { justifyContent: mine ? 'flex-end' : 'flex-start' }]}>
           {isPending && item.status === 'failed' ? (
             <Pressable onPress={() => onRetry(item)}><ThemedText type="small" style={{ color: theme.danger }}>Failed · Retry</ThemedText></Pressable>
@@ -482,6 +567,8 @@ const styles = StyleSheet.create({
   sharedThumb: { width: 64, height: 64 },
   msgImage: { width: 200, height: 200, borderRadius: 10, backgroundColor: '#222' },
   meta: { flexDirection: 'row', marginTop: 2, marginHorizontal: 6 },
+  reactionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 3, marginHorizontal: 4 },
+  reactionChip: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, borderWidth: StyleSheet.hairlineWidth },
   typing: { paddingHorizontal: 16, paddingBottom: 4 },
   banner: { padding: 12, borderTopWidth: StyleSheet.hairlineWidth },
   bannerRow: { flexDirection: 'row', gap: 8, justifyContent: 'center' },

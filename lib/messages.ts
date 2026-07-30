@@ -193,6 +193,32 @@ export function subscribeToThread(
 }
 
 /** Refresh the inbox when any message lands in one of my conversations (RLS-filtered). */
+export type MessageReaction = { message_id: string; user_id: string; emoji: string };
+
+/** All emoji reactions for a conversation's messages (member-gated). */
+export async function getMessageReactions(cid: string): Promise<MessageReaction[]> {
+  const { data, error } = await supabase.rpc('get_message_reactions', { _cid: cid });
+  if (error) throw error;
+  return (data ?? []) as MessageReaction[];
+}
+
+/** Set/change your reaction on a message; empty emoji clears it. */
+export async function reactToMessage(messageId: string, emoji: string): Promise<void> {
+  const { error } = await supabase.rpc('react_to_message', { _message_id: messageId, _emoji: emoji });
+  if (error) throw error;
+}
+
+/** Realtime: fire on any reaction change (INSERT/UPDATE/DELETE). */
+export function subscribeToReactions(onChange: () => void): () => void {
+  const channel = supabase
+    .channel('reactions')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'message_reactions' }, () => onChange())
+    .subscribe();
+  return () => {
+    void supabase.removeChannel(channel);
+  };
+}
+
 export function subscribeToInbox(onChange: () => void): () => void {
   const channel = supabase
     .channel('inbox')

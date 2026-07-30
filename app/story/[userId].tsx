@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ActionMenu } from '@/components/ui/action-menu';
 import { useTheme } from '@/hooks/use-theme';
+import { confirm } from '@/lib/confirm';
 import { blockUser, reportUser } from '@/lib/profile';
 import { formatRelative } from '@/lib/relative-time';
 import { deleteStory, getStoryViewers, getUserStories, markStoryViewed, replyToStory, type Story, type StoryViewer } from '@/lib/stories';
@@ -177,34 +178,32 @@ export default function StoryViewerScreen() {
     setViewers(await getStoryViewers(story.id).catch(() => []));
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!story?.is_self) return;
+    const id = story.id;
     setPaused(true);
-    Alert.alert('Delete story?', 'This removes it for everyone.', [
-      { text: 'Cancel', style: 'cancel', onPress: () => setPaused(false) },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          const id = story.id;
-          try {
-            await deleteStory(id);
-          } catch {
-            setPaused(false);
-            Alert.alert('Could not delete', 'Please try again.');
-            return;
-          }
-          const remaining = stories.filter((s) => s.id !== id);
-          if (remaining.length === 0) {
-            router.back();
-            return;
-          }
-          setSeg((s) => Math.min(s, remaining.length - 1));
-          setStories(remaining);
-          setPaused(false);
-        },
-      },
-    ]);
+    // `confirm` is cross-platform (window.confirm on web, native alert on device);
+    // React Native's Alert.alert is a no-op on web, so the PWA needs this.
+    const ok = await confirm('Delete story?', 'This removes it for everyone.', 'Delete');
+    if (!ok) {
+      setPaused(false);
+      return;
+    }
+    try {
+      await deleteStory(id);
+    } catch {
+      setPaused(false);
+      await confirm('Could not delete', 'Please try again.', 'OK');
+      return;
+    }
+    const remaining = stories.filter((s) => s.id !== id);
+    if (remaining.length === 0) {
+      router.back();
+      return;
+    }
+    setSeg((s) => Math.min(s, remaining.length - 1));
+    setStories(remaining);
+    setPaused(false);
   };
 
   return (

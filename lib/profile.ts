@@ -220,21 +220,14 @@ export async function getConnections(
 export type BlockedMuted = { blocked: Connection[]; muted: Connection[] };
 
 export async function getBlockedAndMuted(): Promise<BlockedMuted> {
-  const { data: u } = await supabase.auth.getUser();
-  const uid = u.user!.id;
-  const [b, m] = await Promise.all([
-    supabase
-      .from('blocks')
-      .select('profiles!blocks_blocked_id_fkey(id, handle, display_name, avatar_url)')
-      .eq('blocker_id', uid),
-    supabase
-      .from('mutes')
-      .select('profiles!mutes_muted_id_fkey(id, handle, display_name, avatar_url)')
-      .eq('muter_id', uid),
-  ]);
-  const pick = (rows: { profiles: Connection }[] | null) =>
-    ((rows ?? []) as unknown as { profiles: Connection }[]).map((r) => r.profiles).filter(Boolean);
-  return { blocked: pick(b.data as never), muted: pick(m.data as never) };
+  // Via a SECURITY DEFINER RPC — a client-side join to profiles is RLS-filtered, so
+  // blocked/muted users (whose profiles aren't otherwise visible) would drop out.
+  const { data, error } = await supabase.rpc('get_blocked_muted');
+  if (error) throw error;
+  const rows = (data ?? []) as ({ kind: 'block' | 'mute' } & Connection)[];
+  const pick = (kind: 'block' | 'mute') =>
+    rows.filter((r) => r.kind === kind).map(({ id, handle, display_name, avatar_url }) => ({ id, handle, display_name, avatar_url }));
+  return { blocked: pick('block'), muted: pick('mute') };
 }
 
 // ---- Edit profile ----------------------------------------------------------

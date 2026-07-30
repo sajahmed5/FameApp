@@ -18,6 +18,7 @@ import {
   getProfilePosts,
   muteUser,
   reportUser,
+  unblockUser,
   unfollowUser,
   unmuteUser,
   type GridPost,
@@ -95,6 +96,11 @@ export default function PublicProfileScreen() {
     if (!ok) return;
     await blockUser(overview.id);
     router.back();
+  };
+  const unblockFlow = async () => {
+    if (!overview) return;
+    await unblockUser(overview.id);
+    await load();
   };
   const toggleMute = async () => {
     if (!overview) return;
@@ -192,11 +198,15 @@ export default function PublicProfileScreen() {
         visible={menuOpen}
         title={`@${overview.handle}`}
         onClose={() => setMenuOpen(false)}
-        options={[
-          { label: 'Report', onPress: () => setReportOpen(true) },
-          { label: overview.is_muting ? 'Unmute' : 'Mute', onPress: toggleMute },
-          { label: 'Block', destructive: true, onPress: blockFlow },
-        ]}
+        options={
+          overview.is_blocked
+            ? [{ label: 'Unblock', onPress: unblockFlow }]
+            : [
+                { label: 'Report', onPress: () => setReportOpen(true) },
+                { label: overview.is_muting ? 'Unmute' : 'Mute', onPress: toggleMute },
+                { label: 'Block', destructive: true, onPress: blockFlow },
+              ]
+        }
       />
       <ActionMenu
         visible={reportOpen}

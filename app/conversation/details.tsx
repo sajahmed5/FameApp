@@ -18,6 +18,7 @@ import {
   getSharedGroups,
   leaveConversation,
   reportConversation,
+  setConversationPinned,
   setMuted,
   type ConversationDetail,
   type SharedGroup,
@@ -39,6 +40,7 @@ export default function ConversationDetailsScreen() {
   const [media, setMedia] = useState<SharedMedia[]>([]);
   const [groups, setGroups] = useState<SharedGroup[]>([]);
   const [muted, setMutedState] = useState(false);
+  const [pinned, setPinnedState] = useState(false);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [reportOpen, setReportOpen] = useState(false);
 
@@ -62,7 +64,9 @@ export default function ConversationDetailsScreen() {
         d.type === 'direct' && otherId ? getSharedGroups(otherId).catch(() => []) : Promise.resolve([]),
       ]);
       setMedia(mediaRows);
-      setMutedState(convos.find((c) => c.id === cid)?.muted ?? false);
+      const mine = convos.find((c) => c.id === cid);
+      setMutedState(mine?.muted ?? false);
+      setPinnedState(mine?.pinned ?? false);
       setGroups(groupRows);
       setStatus('ready');
     } catch {
@@ -82,6 +86,16 @@ export default function ConversationDetailsScreen() {
       await setMuted(cid, next);
     } catch {
       setMutedState(!next);
+    }
+  };
+
+  const togglePin = async () => {
+    const next = !pinned;
+    setPinnedState(next);
+    try {
+      await setConversationPinned(cid, next);
+    } catch {
+      setPinnedState(!next);
     }
   };
 
@@ -141,6 +155,8 @@ export default function ConversationDetailsScreen() {
 
           {/* actions */}
           <View style={[styles.section, { borderColor: theme.border }]}>
+            <Row icon="arrow-up-circle-outline" label="Pin to top" theme={theme}
+              right={<Toggle on={pinned} theme={theme} />} onPress={togglePin} />
             <Row icon={muted ? 'notifications-off' : 'notifications-outline'} label="Mute notifications" theme={theme}
               right={<Toggle on={muted} theme={theme} />} onPress={toggleMute} />
             <Row icon="flag-outline" label={isGroup ? 'Report group' : 'Report'} theme={theme} onPress={() => setReportOpen(true)} />

@@ -16,6 +16,7 @@ import {
   leaveConversation,
   markConversationUnread,
   setConversationArchived,
+  setConversationPinned,
   setMuted,
   subscribeToInbox,
   type Conversation,
@@ -157,6 +158,10 @@ export default function MessagesScreen() {
                 await setConversationArchived(item.id, !item.archived);
                 void load();
               }}
+              onPin={async () => {
+                await setConversationPinned(item.id, !item.pinned);
+                void load();
+              }}
               openRowRef={openRow}
             />
           )}
@@ -186,6 +191,7 @@ function ConversationRow({
   onLeave,
   onUnread,
   onArchive,
+  onPin,
   openRowRef,
 }: {
   conversation: Conversation;
@@ -195,6 +201,7 @@ function ConversationRow({
   onLeave: () => void;
   onUnread: () => void;
   onArchive: () => void;
+  onPin: () => void;
   openRowRef: React.MutableRefObject<Swipeable | null>;
 }) {
   const theme = useTheme();
@@ -242,6 +249,15 @@ function ConversationRow({
           <Pressable
             onPress={() => {
               rowRef.current?.close();
+              onPin();
+            }}
+            style={[styles.action, { backgroundColor: theme.backgroundElement }]}>
+            <Ionicons name={c.pinned ? 'arrow-down-circle-outline' : 'arrow-up-circle-outline'} size={18} color={theme.text} />
+            <ThemedText type="small">{c.pinned ? 'Unpin' : 'Pin'}</ThemedText>
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              rowRef.current?.close();
               onMute();
             }}
             style={[styles.action, { backgroundColor: theme.backgroundElement }]}>
@@ -274,6 +290,7 @@ function ConversationRow({
             <ThemedText type="smallBold" numberOfLines={1} style={{ flex: 1 }}>
               {title}
             </ThemedText>
+            {c.pinned ? <Ionicons name="arrow-up-circle" size={14} color={theme.tint} /> : null}
             <ThemedText type="small" themeColor="textSecondary">
               {formatRelative(c.last_at)}
             </ThemedText>

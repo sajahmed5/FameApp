@@ -21,6 +21,7 @@ export type Conversation = {
   muted: boolean;
   is_request: boolean;
   archived: boolean;
+  pinned: boolean;
 };
 
 export type Member = {
@@ -258,6 +259,12 @@ export async function setConversationArchived(cid: string, archived: boolean): P
 /** Mark a conversation unread (rewinds my read cursor to before the last message). */
 export async function markConversationUnread(cid: string): Promise<void> {
   const { error } = await supabase.rpc('mark_conversation_unread', { _cid: cid });
+  if (error) throw error;
+}
+
+/** Pin/unpin a conversation to the top of my inbox. */
+export async function setConversationPinned(cid: string, pinned: boolean): Promise<void> {
+  const { error } = await supabase.rpc('set_conversation_pinned', { _cid: cid, _pinned: pinned });
   if (error) throw error;
 }
 

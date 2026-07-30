@@ -58,7 +58,7 @@ function route(
     return router.push(`/u/${data.actor}`);
   if (type === 'reach_milestone') return router.push('/analytics');
   if (type === 'moderation' && data?.post_id) return router.push(`/post/${data.post_id}/edit`);
-  if ((type === 'comment' || type === 'reply' || type === 'comment_reaction') && data?.post_id)
+  if ((type === 'comment' || type === 'reply' || type === 'comment_reaction' || type === 'mention') && data?.post_id)
     return router.push(`/post/${data.post_id}`);
   return router.push('/notifications');
 }

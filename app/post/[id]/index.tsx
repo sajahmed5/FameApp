@@ -7,6 +7,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } fro
 
 import { CollectionPicker } from '@/components/collection-picker';
 import { CommentSheet } from '@/components/comments/comment-sheet';
+import { MentionText } from '@/components/mention-text';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ActionMenu } from '@/components/ui/action-menu';
@@ -181,9 +182,9 @@ export default function PostViewScreen() {
         </View>
 
         {post.caption ? (
-          <ThemedText type="default" style={styles.caption}>
+          <MentionText type="default" style={styles.caption}>
             {post.caption}
-          </ThemedText>
+          </MentionText>
         ) : null}
 
         {post.tags.length > 0 ? (

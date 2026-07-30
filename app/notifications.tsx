@@ -71,8 +71,9 @@ export default function NotificationsScreen() {
       if (n.post_id) return router.push(`/post/${n.post_id}/edit`);
       return;
     }
-    if ((n.type === 'comment' || n.type === 'reply' || n.type === 'comment_reaction') && n.post_id)
+    if ((n.type === 'comment' || n.type === 'reply' || n.type === 'comment_reaction' || n.type === 'mention') && n.post_id)
       return router.push(`/post/${n.post_id}`);
+    if (n.type === 'mention' && n.actor_handle) return router.push(`/u/${n.actor_handle}`);
   }
 
   return (
@@ -179,6 +180,8 @@ function message(n: InboxNotification): string {
         : 'replied to your comment';
     case 'comment_reaction':
       return `reacted ${n.payload.emoji ?? ''} to your comment`;
+    case 'mention':
+      return n.comment_id ? 'mentioned you in a comment' : 'mentioned you in a post';
     case 'reach_milestone':
       return `Your post reached ${Number(n.payload.milestone ?? 0).toLocaleString()}+ people 🎉`;
     case 'moderation':

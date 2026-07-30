@@ -10,6 +10,7 @@ import { CollectionPicker } from '@/components/collection-picker';
 import { CommentSheet } from '@/components/comments/comment-sheet';
 import { FollowingEmpty } from '@/components/deck/following-empty';
 import { StoriesRail } from '@/components/deck/stories-rail';
+import { MentionText } from '@/components/mention-text';
 import { ShareSheet } from '@/components/share-sheet';
 import { ThemedText } from '@/components/themed-text';
 import { Avatar } from '@/components/ui/avatar';
@@ -224,9 +225,9 @@ const FeedCard = memo(function FeedCard({
       ) : null}
 
       {card.caption ? (
-        <ThemedText type="default" style={styles.caption} numberOfLines={5}>
+        <MentionText type="default" style={styles.caption} numberOfLines={5}>
           {card.caption}
-        </ThemedText>
+        </MentionText>
       ) : null}
 
       {card.tags.length > 0 ? (

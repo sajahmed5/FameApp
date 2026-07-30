@@ -3,6 +3,7 @@ import { Image } from 'expo-image';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
+import { MentionText } from '@/components/mention-text';
 import { ThemedText } from '@/components/themed-text';
 import { BRAND } from '@/constants/config';
 import { REACTION_EMOJIS, type CommentView } from '@/lib/comments';
@@ -86,9 +87,9 @@ export function CommentItem(props: Props) {
             This comment was deleted.
           </ThemedText>
         ) : (
-          <ThemedText type="default" style={styles.text}>
-            {comment.body}
-          </ThemedText>
+          <MentionText type="default" style={styles.text}>
+            {comment.body ?? ''}
+          </MentionText>
         )}
 
         {/* Reaction pills */}

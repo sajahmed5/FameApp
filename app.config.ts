@@ -41,7 +41,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ...(config.plugins ?? []),
     // Sentry's Expo config plugin: wires the native SDK and, at build time, uploads
     // source maps. `organization`/`project`/`authToken` come from env so nothing
-    // Sentry-account-specific is committed. Harmless when unset (no upload configured).
+    // Sentry-account-specific is committed.
+    //
+    // NOTE: leaving these unset does NOT skip the upload — the Gradle/Xcode hook still
+    // shells out to sentry-cli, which exits 1 and fails the whole native build. That is
+    // why every eas.json build profile sets SENTRY_DISABLE_AUTO_UPLOAD=true. Remove that
+    // once real Sentry credentials exist, to get readable (un-minified) stack traces.
     [
       '@sentry/react-native/expo',
       {

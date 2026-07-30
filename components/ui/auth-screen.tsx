@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { PhixrLockup } from '@/components/brand/phixr-logo';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/use-theme';
@@ -20,12 +21,14 @@ type AuthScreenProps = {
   children: ReactNode;
   /** Show a back chevron top-left. */
   onBack?: () => void;
+  /** Show the phixr lockup centered above the title (entry screens). */
+  brand?: boolean;
   /** Sticky footer content (e.g. primary button + links). */
   footer?: ReactNode;
 };
 
 /** Consistent scaffold for auth screens: safe area, keyboard avoidance, title block. */
-export function AuthScreen({ title, subtitle, children, onBack, footer }: AuthScreenProps) {
+export function AuthScreen({ title, subtitle, children, onBack, brand, footer }: AuthScreenProps) {
   const insets = useSafeAreaInsets();
   const theme = useTheme();
 
@@ -49,6 +52,12 @@ export function AuthScreen({ title, subtitle, children, onBack, footer }: AuthSc
               style={styles.back}>
               <Ionicons name="chevron-back" size={26} color={theme.text} />
             </Pressable>
+          ) : null}
+
+          {brand ? (
+            <View style={styles.brand}>
+              <PhixrLockup height={36} />
+            </View>
           ) : null}
 
           <View style={styles.header}>
@@ -83,6 +92,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   back: { alignSelf: 'flex-start', marginBottom: -8, marginLeft: -6 },
+  brand: { alignItems: 'center', paddingTop: 8 },
   header: { gap: 6 },
   body: { gap: 18 },
   footer: {

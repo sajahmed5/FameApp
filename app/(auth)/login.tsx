@@ -67,6 +67,7 @@ export default function LoginScreen() {
 
   return (
     <AuthScreen
+      brand
       title="Welcome back"
       subtitle="Log in to your Phixr account."
       footer={

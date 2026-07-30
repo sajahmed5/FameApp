@@ -7,8 +7,10 @@ import { PostGrid } from '@/components/profile/post-grid';
 import { ProfileHeader } from '@/components/profile/profile-header';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { ActionMenu } from '@/components/ui/action-menu';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/use-theme';
+import { confirm } from '@/lib/confirm';
 import {
   blockUser,
   followUser,
@@ -32,6 +34,8 @@ export default function PublicProfileScreen() {
   const [gridStatus, setGridStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [status, setStatus] = useState<'loading' | 'ready' | 'missing' | 'error'>('loading');
   const [busy, setBusy] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!handle) return;
@@ -75,54 +79,30 @@ export default function PublicProfileScreen() {
     }
   }
 
-  function reportFlow() {
+  const doReport = (reason: string) => {
     if (!overview) return;
-    const reasons = ['Spam', 'Harassment or bullying', 'Inappropriate content'];
-    Alert.alert('Report account', 'Why are you reporting this account?', [
-      ...reasons.map((r) => ({
-        text: r,
-        onPress: () =>
-          reportUser(overview.id, r).then(() =>
-            Alert.alert('Thanks', 'Our team will review this.'),
-          ),
-      })),
-      { text: 'Cancel', style: 'cancel' as const },
-    ]);
-  }
-  function blockFlow() {
+    reportUser(overview.id, reason)
+      .then(() => Alert.alert('Thanks', 'Our team will review this.'))
+      .catch(() => {});
+  };
+  const blockFlow = async () => {
     if (!overview) return;
-    Alert.alert(
+    const ok = await confirm(
       'Block account',
       `Block @${overview.handle}? They won't see your posts or be able to interact with you.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Block',
-          style: 'destructive',
-          onPress: async () => {
-            await blockUser(overview.id);
-            router.back();
-          },
-        },
-      ],
+      'Block',
     );
-  }
-  function openOverflow() {
+    if (!ok) return;
+    await blockUser(overview.id);
+    router.back();
+  };
+  const toggleMute = async () => {
     if (!overview) return;
-    Alert.alert(`@${overview.handle}`, undefined, [
-      { text: 'Report', onPress: reportFlow },
-      {
-        text: overview.is_muting ? 'Unmute' : 'Mute',
-        onPress: async () => {
-          if (overview.is_muting) await unmuteUser(overview.id);
-          else await muteUser(overview.id);
-          await load();
-        },
-      },
-      { text: 'Block', style: 'destructive', onPress: blockFlow },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  }
+    if (overview.is_muting) await unmuteUser(overview.id);
+    else await muteUser(overview.id);
+    await load();
+  };
+  const openOverflow = () => setMenuOpen(true);
 
   if (status === 'loading') {
     return (
@@ -206,6 +186,26 @@ export default function PublicProfileScreen() {
         header={header}
         locked={overview.locked}
         onPressPost={(p) => router.push(`/post/${p.id}`)}
+      />
+
+      <ActionMenu
+        visible={menuOpen}
+        title={`@${overview.handle}`}
+        onClose={() => setMenuOpen(false)}
+        options={[
+          { label: 'Report', onPress: () => setReportOpen(true) },
+          { label: overview.is_muting ? 'Unmute' : 'Mute', onPress: toggleMute },
+          { label: 'Block', destructive: true, onPress: blockFlow },
+        ]}
+      />
+      <ActionMenu
+        visible={reportOpen}
+        title="Report this account"
+        onClose={() => setReportOpen(false)}
+        options={['Spam', 'Harassment or bullying', 'Inappropriate content'].map((r) => ({
+          label: r,
+          onPress: () => doReport(r),
+        }))}
       />
     </ThemedView>
   );

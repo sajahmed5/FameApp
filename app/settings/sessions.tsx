@@ -6,6 +6,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } fro
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/use-theme';
+import { confirm } from '@/lib/confirm';
 import { getActiveDevices, signOutOtherSessions } from '@/lib/profile';
 
 /**
@@ -26,30 +27,23 @@ export default function SessionsScreen() {
     void load();
   }, [load]);
 
-  const revokeOthers = () => {
-    Alert.alert(
+  const revokeOthers = async () => {
+    const ok = await confirm(
       'Sign out other devices?',
       'This keeps you signed in here and signs out every other device.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign out others',
-          style: 'destructive',
-          onPress: async () => {
-            setBusy(true);
-            try {
-              await signOutOtherSessions();
-              Alert.alert('Done', 'Other devices have been signed out.');
-              void load();
-            } catch {
-              Alert.alert('Something went wrong', 'Could not sign out other devices. Try again.');
-            } finally {
-              setBusy(false);
-            }
-          },
-        },
-      ],
+      'Sign out others',
     );
+    if (!ok) return;
+    setBusy(true);
+    try {
+      await signOutOtherSessions();
+      Alert.alert('Done', 'Other devices have been signed out.');
+      void load();
+    } catch {
+      Alert.alert('Something went wrong', 'Could not sign out other devices. Try again.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (

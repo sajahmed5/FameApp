@@ -19,6 +19,7 @@ import { BRAND, SUPPORT_EMAIL } from '@/constants/config';
 import { useTheme } from '@/hooks/use-theme';
 import { analytics } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth-context';
+import { confirm } from '@/lib/confirm';
 import {
   deleteAccount,
   getNotificationPrefs,
@@ -87,14 +88,12 @@ export default function SettingsScreen() {
       // Server builds a JSON archive (profile, posts, comments, follows) + signed media
       // links and returns a short-lived signed download link.
       const { url, mediaCount } = await requestDataExport();
-      Alert.alert(
+      const ok = await confirm(
         'Your export is ready',
         `A downloadable archive of your data${mediaCount ? ` and ${mediaCount} media files` : ''} has been prepared. The link is valid for 24 hours.`,
-        [
-          { text: 'Download', onPress: () => void Linking.openURL(url) },
-          { text: 'Close', style: 'cancel' },
-        ],
+        'Download',
       );
+      if (ok) void Linking.openURL(url);
     } catch {
       Alert.alert('Export failed', 'Could not export your data. Try again.');
     } finally {
@@ -102,40 +101,28 @@ export default function SettingsScreen() {
     }
   }
 
-  function confirmDelete() {
-    Alert.alert(
+  async function confirmDelete() {
+    // Two-step confirmation (works on web/PWA, where Alert.alert is a no-op).
+    const first = await confirm(
       'Delete account',
       'This permanently erases your account, posts, and all data. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete everything',
-          style: 'destructive',
-          onPress: () =>
-            Alert.alert(
-              'Are you absolutely sure?',
-              'There is no way to recover your account after this.',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Delete',
-                  style: 'destructive',
-                  onPress: async () => {
-                    setBusy('delete');
-                    try {
-                      await deleteAccount();
-                    } catch {
-                      // signs out → root guard routes to login
-                      Alert.alert('Delete failed', 'Could not delete your account. Try again.');
-                      setBusy(null);
-                    }
-                  },
-                },
-              ],
-            ),
-        },
-      ],
+      'Delete everything',
     );
+    if (!first) return;
+    const sure = await confirm(
+      'Are you absolutely sure?',
+      'There is no way to recover your account after this.',
+      'Delete',
+    );
+    if (!sure) return;
+    setBusy('delete');
+    try {
+      await deleteAccount();
+    } catch {
+      // signs out → root guard routes to login
+      Alert.alert('Delete failed', 'Could not delete your account. Try again.');
+      setBusy(null);
+    }
   }
 
   return (

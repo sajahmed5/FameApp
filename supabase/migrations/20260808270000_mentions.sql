@@ -18,12 +18,19 @@ alter table public.notifications add constraint notifications_type_check check (
   'new_follower','follow_request','follow_accepted',
   'comment','reply','comment_reaction','reach_milestone','moderation','message','mention'));
 
--- 2) shared extractor → enqueue
+-- 2) shared extractor → enqueue. Deliberately NO follow requirement — you can tag
+--    anyone (friend, stranger, celebrity) and they're notified. The one visibility
+--    gate: mentions on a PRIVATE post only notify people who can actually see it
+--    (the author's accepted followers, or the author), so nobody gets a dead-end
+--    notification to a post that won't open.
 create or replace function public.notify_mentions(_text text, _actor uuid, _post_id uuid, _comment_id uuid)
 returns void language plpgsql security definer set search_path = '' as $fn$
-declare _h text; _uid uuid; _n integer := 0;
+declare _h text; _uid uuid; _n integer := 0; _vis text; _author uuid;
 begin
   if _text is null or _text = '' then return; end if;
+  if _post_id is not null then
+    select p.visibility, p.user_id into _vis, _author from public.posts p where p.id = _post_id;
+  end if;
   for _h in
     select distinct lower(m[1])
     from regexp_matches(_text, '@([a-zA-Z0-9_]{3,30})', 'g') as m
@@ -31,6 +38,12 @@ begin
     select p.id into _uid from public.profiles p
       where p.handle = _h and p.account_status = 'active';
     if _uid is not null then
+      if _vis = 'private' and _uid <> _author and not exists (
+        select 1 from public.follows f
+        where f.follower_id = _uid and f.followee_id = _author and f.status = 'accepted'
+      ) then
+        continue;  -- they can't see the post; don't notify
+      end if;
       perform public.enqueue_notification(_uid, 'mention', _actor, _post_id, _comment_id, '{}'::jsonb);
       _n := _n + 1;
       exit when _n >= 5;

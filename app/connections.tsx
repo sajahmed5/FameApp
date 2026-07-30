@@ -31,8 +31,8 @@ export default function ConnectionsScreen() {
 
   const refresh = useRefresh(load);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- mount data-loader; sets loading/error state internally
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount data-loader; sets loading/error state internally
     void load();
   }, [load]);
 

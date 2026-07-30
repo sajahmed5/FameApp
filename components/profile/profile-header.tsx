@@ -62,20 +62,21 @@ export function ProfileHeader({
           @{profile.handle}
           {profile.is_private ? '  ·  Private' : ''}
         </ThemedText>
+        {showPointsHero ? (
+          <View style={styles.inlineStats}>
+            <InlineStat value={profile.post_count} label="posts" />
+            <ThemedText type="small" themeColor="textSecondary">·</ThemedText>
+            <InlineStat value={profile.follower_count} label="followers" onPress={onPressFollowers} />
+            <ThemedText type="small" themeColor="textSecondary">·</ThemedText>
+            <InlineStat value={profile.following_count} label="following" onPress={onPressFollowing} />
+          </View>
+        ) : null}
         {profile.bio ? (
           <ThemedText type="default" style={styles.bio}>
             {profile.bio}
           </ThemedText>
         ) : null}
       </View>
-
-      {showPointsHero ? (
-        <View style={styles.miniRow}>
-          <MiniStat label="Posts" value={profile.post_count} />
-          <MiniStat label="Followers" value={profile.follower_count} onPress={onPressFollowers} />
-          <MiniStat label="Following" value={profile.following_count} onPress={onPressFollowing} />
-        </View>
-      ) : null}
 
       {action}
     </View>
@@ -100,22 +101,19 @@ function Stat({ label, value, onPress }: { label: string; value: number; onPress
   );
 }
 
-/** Compact side-by-side stat used under the points hero. */
-function MiniStat({ label, value, onPress }: { label: string; value: number; onPress?: () => void }) {
+/** Compact inline stat ("N label") shown next to the name; tappable for followers/following. */
+function InlineStat({ value, label, onPress }: { value: number; label: string; onPress?: () => void }) {
   const content = (
-    <View style={styles.miniStat}>
-      <ThemedText type="smallBold">{formatCount(value)}</ThemedText>
-      <ThemedText type="small" themeColor="textSecondary">
-        {label}
-      </ThemedText>
-    </View>
+    <ThemedText type="small" themeColor="textSecondary">
+      <ThemedText type="smallBold">{formatCount(value)}</ThemedText> {label}
+    </ThemedText>
   );
   return onPress ? (
-    <Pressable onPress={onPress} accessibilityRole="button" style={styles.miniPress}>
+    <Pressable onPress={onPress} accessibilityRole="button">
       {content}
     </Pressable>
   ) : (
-    <View style={styles.miniPress}>{content}</View>
+    content
   );
 }
 
@@ -128,8 +126,6 @@ const styles = StyleSheet.create({
   pointsHero: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2 },
   pointsValue: { fontSize: 40, lineHeight: 44 },
   identity: { gap: 3 },
+  inlineStats: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 2 },
   bio: { marginTop: 4 },
-  miniRow: { flexDirection: 'row', justifyContent: 'space-around' },
-  miniPress: { flex: 1 },
-  miniStat: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', gap: 5 },
 });

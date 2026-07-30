@@ -108,6 +108,12 @@ export function UploadBanner() {
             </ThemedText>
           </Pressable>
         ) : null}
+        {/* Cancel an in-progress upload/post (aborts the transfer + drops the draft). */}
+        {content.tone === 'info' ? (
+          <Pressable onPress={clear} hitSlop={8} accessibilityRole="button" accessibilityLabel="Cancel upload">
+            <Ionicons name="close" size={16} color={theme.textSecondary} />
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );

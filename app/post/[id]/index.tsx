@@ -10,7 +10,9 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ActionMenu } from '@/components/ui/action-menu';
 import { Button } from '@/components/ui/button';
+import { BRAND } from '@/constants/config';
 import { useTheme } from '@/hooks/use-theme';
+import { recordSwipe, undoSwipe } from '@/lib/deck';
 import { formatCount } from '@/lib/format';
 import { getPostDetail, POST_REPORT_REASONS, reportPost, type PostDetail } from '@/lib/posts';
 
@@ -23,6 +25,10 @@ export default function PostViewScreen() {
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [commentCount, setCommentCount] = useState(0);
   const [reportOpen, setReportOpen] = useState(false);
+  // Local like/skip state so the viewer can toggle (like ↔ unlike, skip ↔ un-skip).
+  const [myDir, setMyDir] = useState<'left' | 'right' | null>(null);
+  const [likeCount, setLikeCount] = useState(0);
+  const [skipCount, setSkipCount] = useState(0);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -35,11 +41,39 @@ export default function PostViewScreen() {
       }
       setPost(data);
       setCommentCount(data.comment_count);
+      setMyDir(data.my_direction);
+      setLikeCount(data.like_count);
+      setSkipCount(data.skip_count);
       setStatus('ready');
     } catch {
       setStatus('error');
     }
   }, [id]);
+
+  const setDirection = useCallback(
+    async (target: 'left' | 'right' | null) => {
+      if (!id) return;
+      const cur = myDir;
+      if (cur === target) return;
+      // Optimistic: adjust the toggle + counts, revert on failure.
+      const adjust = (sign: number, d: 'left' | 'right' | null) => {
+        if (d === 'right') setLikeCount((n) => Math.max(0, n + sign));
+        if (d === 'left') setSkipCount((n) => Math.max(0, n + sign));
+      };
+      setMyDir(target);
+      adjust(-1, cur);
+      adjust(+1, target);
+      try {
+        if (cur) await undoSwipe(id);
+        if (target) await recordSwipe(id, target);
+      } catch {
+        setMyDir(cur);
+        adjust(+1, cur);
+        adjust(-1, target);
+      }
+    },
+    [id, myDir],
+  );
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- mount data-loader; sets loading/error state internally
@@ -96,11 +130,26 @@ export default function PostViewScreen() {
           <Image source={{ uri: post.media_url }} style={styles.media} contentFit="cover" />
         )}
 
-        {/* Likes · skips · comments */}
+        {/* Tap the heart to like/unlike, the cross to skip/un-skip. */}
         <View style={styles.stats}>
-          <Stat icon="heart" value={post.like_count} tint={theme.tint} />
-          <Stat icon="close" value={post.skip_count} tint={theme.textSecondary} />
-          <Stat icon="chatbubble-outline" value={commentCount} tint={theme.textSecondary} />
+          <Stat
+            icon={myDir === 'right' ? 'heart' : 'heart-outline'}
+            value={likeCount}
+            tint={myDir === 'right' ? BRAND.accent : theme.text}
+            onPress={() => setDirection(myDir === 'right' ? null : 'right')}
+          />
+          <Stat
+            icon={myDir === 'left' ? 'close-circle' : 'close'}
+            value={skipCount}
+            tint={myDir === 'left' ? BRAND.accent : theme.textSecondary}
+            onPress={() => setDirection(myDir === 'left' ? null : 'left')}
+          />
+          <Stat
+            icon="chatbubble-outline"
+            value={commentCount}
+            tint={theme.textSecondary}
+            onPress={() => setCommentsOpen(true)}
+          />
         </View>
 
         {post.caption ? (
@@ -161,16 +210,23 @@ function Stat({
   icon,
   value,
   tint,
+  onPress,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   value: number;
   tint: string;
+  onPress?: () => void;
 }) {
   return (
-    <View style={styles.stat}>
-      <Ionicons name={icon} size={18} color={tint} />
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      hitSlop={8}
+      accessibilityRole="button"
+      style={styles.stat}>
+      <Ionicons name={icon} size={20} color={tint} />
       <ThemedText type="smallBold">{formatCount(value)}</ThemedText>
-    </View>
+    </Pressable>
   );
 }
 

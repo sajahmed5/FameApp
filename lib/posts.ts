@@ -89,6 +89,8 @@ export type PostDetail = {
   handle: string;
   display_name: string;
   user_id: string;
+  /** The caller's own swipe on this post, so the viewer can show like/skip as a toggle. */
+  my_direction: 'left' | 'right' | null;
 };
 
 /** Load a single post for the read-only viewer, with counts + tags. RLS hides ones you can't see. */
@@ -124,6 +126,18 @@ export async function getPostDetail(id: string): Promise<PostDetail | null> {
     })
     .filter((n): n is string => !!n);
   const signed = await signMediaPaths([row.media_url]);
+  // My own swipe on this post (own rows only under RLS) → drives the like/skip toggle.
+  const { data: auth } = await supabase.auth.getUser();
+  let myDirection: 'left' | 'right' | null = null;
+  if (auth.user?.id) {
+    const { data: sw } = await supabase
+      .from('swipes')
+      .select('direction')
+      .eq('post_id', id)
+      .eq('user_id', auth.user.id)
+      .maybeSingle();
+    myDirection = (sw?.direction as 'left' | 'right' | undefined) ?? null;
+  }
   return {
     id: row.id,
     media_url: signed.get(row.media_url) ?? row.media_url,
@@ -136,6 +150,7 @@ export async function getPostDetail(id: string): Promise<PostDetail | null> {
     handle: prof?.handle ?? '',
     display_name: prof?.display_name ?? '',
     user_id: row.user_id,
+    my_direction: myDirection,
   };
 }
 

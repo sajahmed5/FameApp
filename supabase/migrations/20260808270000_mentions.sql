@@ -11,11 +11,12 @@
 -- notified about a post they can't open.
 -- ============================================================================
 
--- 1) allow the new notification type
+-- 1) allow the new notification type (list must include every type already live —
+--    'message' was added by the messages migration)
 alter table public.notifications drop constraint if exists notifications_type_check;
 alter table public.notifications add constraint notifications_type_check check (type in (
   'new_follower','follow_request','follow_accepted',
-  'comment','reply','comment_reaction','reach_milestone','moderation','mention'));
+  'comment','reply','comment_reaction','reach_milestone','moderation','message','mention'));
 
 -- 2) shared extractor → enqueue
 create or replace function public.notify_mentions(_text text, _actor uuid, _post_id uuid, _comment_id uuid)

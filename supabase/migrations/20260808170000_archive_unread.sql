@@ -35,7 +35,9 @@ end $fn$;
 revoke all on function public.mark_conversation_unread(uuid) from public;
 grant execute on function public.mark_conversation_unread(uuid) to authenticated;
 
--- get_conversations, now returning `archived`.
+-- get_conversations, now returning `archived`. Adding a return column changes the
+-- function's return type, so it must be dropped and recreated (not create-or-replace).
+drop function if exists public.get_conversations();
 create or replace function public.get_conversations()
 returns table (
   id uuid, type text, name text, avatar_url text,

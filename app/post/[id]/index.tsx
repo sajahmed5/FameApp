@@ -13,16 +13,20 @@ import { ActionMenu } from '@/components/ui/action-menu';
 import { Button } from '@/components/ui/button';
 import { BRAND } from '@/constants/config';
 import { useTheme } from '@/hooks/use-theme';
+import { useAuth } from '@/lib/auth-context';
 import { getBookmarkState } from '@/lib/bookmarks';
+import { confirm } from '@/lib/confirm';
 import { recordSwipe, undoSwipe } from '@/lib/deck';
 import { formatCount } from '@/lib/format';
-import { getPostDetail, POST_REPORT_REASONS, reportPost, type PostDetail } from '@/lib/posts';
+import { deletePost, getPostDetail, POST_REPORT_REASONS, reportPost, type PostDetail } from '@/lib/posts';
 
 export default function PostViewScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const { user } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [post, setPost] = useState<PostDetail | null>(null);
+  const [ownerMenu, setOwnerMenu] = useState(false);
   const [status, setStatus] = useState<'loading' | 'ready' | 'missing' | 'error'>('loading');
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [commentCount, setCommentCount] = useState(0);
@@ -164,6 +168,16 @@ export default function PostViewScreen() {
             tint={theme.textSecondary}
             onPress={() => setCommentsOpen(true)}
           />
+          <View style={{ flex: 1 }} />
+          {post.user_id === user?.id ? (
+            <Pressable
+              onPress={() => setOwnerMenu(true)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Edit or delete this post">
+              <Ionicons name="create-outline" size={22} color={theme.text} />
+            </Pressable>
+          ) : null}
         </View>
 
         {post.caption ? (
@@ -218,6 +232,28 @@ export default function PostViewScreen() {
       />
 
       <CollectionPicker postId={post.id} visible={saveOpen} onClose={() => setSaveOpen(false)} onChange={setSaved} />
+
+      <ActionMenu
+        visible={ownerMenu}
+        title="Your post"
+        onClose={() => setOwnerMenu(false)}
+        options={[
+          { label: 'Edit post', onPress: () => router.push({ pathname: '/post/[id]/edit', params: { id: post.id } }) },
+          {
+            label: 'Delete post',
+            destructive: true,
+            onPress: async () => {
+              if (!(await confirm('Delete post?', 'This permanently removes it and its comments. This cannot be undone.', 'Delete'))) return;
+              try {
+                await deletePost(post.id);
+                router.back();
+              } catch {
+                Alert.alert('Could not delete', 'Please try again.');
+              }
+            },
+          },
+        ]}
+      />
     </ThemedView>
   );
 }

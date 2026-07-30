@@ -165,6 +165,12 @@ export const POST_REPORT_REASONS = [
 ] as const;
 
 /** File a report against a post. Mirrors reportUser/reportComment (RLS-guarded insert). */
+/** Delete one of my own posts (cascades comments/swipes/tags/bookmarks). */
+export async function deletePost(id: string): Promise<void> {
+  const { error } = await supabase.rpc('delete_post', { _id: id });
+  if (error) throw error;
+}
+
 export async function reportPost(postId: string, reason: string, detail?: string): Promise<void> {
   const { data: auth } = await supabase.auth.getUser();
   const reporterId = auth.user?.id;

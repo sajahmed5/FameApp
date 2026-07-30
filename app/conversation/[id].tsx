@@ -540,8 +540,15 @@ function Composer({ text, reply, onChangeText, onSend, onAttach, onCancelReply, 
   text: string; reply: Message | null; onChangeText: (t: string) => void; onSend: () => void; onAttach: () => void; onCancelReply: () => void;
   disabled: boolean; hint: string | null; bottomInset: number; theme: ReturnType<typeof useTheme>;
 }) {
+  // On the iOS standalone PWA, react-native-safe-area-context reports 0 for the bottom
+  // inset, so the composer sat under the home indicator. Read the CSS safe-area env var
+  // directly on web (viewport-fit=cover exposes it); native keeps the measured inset.
+  const bottomPad =
+    Platform.OS === 'web'
+      ? ('max(env(safe-area-inset-bottom), 8px)' as unknown as number)
+      : Math.max(bottomInset, 8);
   return (
-    <View style={[styles.composerWrap, { borderTopColor: theme.border, paddingBottom: Math.max(bottomInset, 8) }]}>
+    <View style={[styles.composerWrap, { borderTopColor: theme.border, paddingBottom: bottomPad }]}>
       {reply ? (
         <View style={[styles.replyBar, { backgroundColor: theme.backgroundElement }]}>
           <Ionicons name="return-up-back" size={16} color={theme.textSecondary} />

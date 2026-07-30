@@ -9,6 +9,12 @@
     "scheme": "phixr",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "updates": {
+      "url": "https://u.expo.dev/ce6bcabb-42f6-4ae2-90d7-5ca670af9229"
+    },
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.phixr.app",

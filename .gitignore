@@ -46,3 +46,6 @@ example
 
 # Supabase CLI local link state
 supabase/.temp/
+
+# EAS submit credentials (Play service account, etc.)
+secrets/

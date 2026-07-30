@@ -123,6 +123,7 @@ export function useComments(postId: string, onCountDelta?: (delta: number) => vo
   }, [postId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount data-loader; sets status/state on resolve
     load();
   }, [load]);
 

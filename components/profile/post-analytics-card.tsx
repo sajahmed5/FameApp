@@ -21,8 +21,8 @@ export function PostAnalyticsCard({ postId }: { postId: string }) {
       setStatus('error');
     }
   }, [postId]);
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- mount data-loader; sets loading/error state internally
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount data-loader; sets loading/error state internally
     void load();
   }, [load]);
 

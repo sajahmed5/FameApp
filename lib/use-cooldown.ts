@@ -12,21 +12,25 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 export function useCooldown() {
   const [remaining, setRemaining] = useState(0);
   const endAt = useRef(0);
+  const active = remaining > 0;
 
+  // Runs a 4Hz ticker only while active; keyed on `active` (not `remaining`) so the
+  // interval is created once when the countdown starts and torn down when it ends —
+  // not re-created on every tick. The interval reads the ref, never `remaining`.
   useEffect(() => {
-    if (remaining <= 0) return;
+    if (!active) return;
     const id = setInterval(() => {
       const secs = Math.max(0, Math.ceil((endAt.current - Date.now()) / 1000));
       setRemaining(secs);
       if (secs <= 0) clearInterval(id);
     }, 250);
     return () => clearInterval(id);
-  }, [remaining > 0]);
+  }, [active]);
 
   const start = useCallback((seconds: number) => {
     endAt.current = Date.now() + seconds * 1000;
     setRemaining(seconds);
   }, []);
 
-  return { remaining, active: remaining > 0, start };
+  return { remaining, active, start };
 }

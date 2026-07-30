@@ -5,6 +5,7 @@ import { useVideoPlayer, VideoView } from 'expo-video';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { CollectionPicker } from '@/components/collection-picker';
 import { CommentSheet } from '@/components/comments/comment-sheet';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -12,6 +13,7 @@ import { ActionMenu } from '@/components/ui/action-menu';
 import { Button } from '@/components/ui/button';
 import { BRAND } from '@/constants/config';
 import { useTheme } from '@/hooks/use-theme';
+import { getBookmarkState } from '@/lib/bookmarks';
 import { recordSwipe, undoSwipe } from '@/lib/deck';
 import { formatCount } from '@/lib/format';
 import { getPostDetail, POST_REPORT_REASONS, reportPost, type PostDetail } from '@/lib/posts';
@@ -25,6 +27,8 @@ export default function PostViewScreen() {
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [commentCount, setCommentCount] = useState(0);
   const [reportOpen, setReportOpen] = useState(false);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [saved, setSaved] = useState(false);
   // Local like/skip state so the viewer can toggle (like ↔ unlike, skip ↔ un-skip).
   const [myDir, setMyDir] = useState<'left' | 'right' | null>(null);
   const [likeCount, setLikeCount] = useState(0);
@@ -45,6 +49,7 @@ export default function PostViewScreen() {
       setLikeCount(data.like_count);
       setSkipCount(data.skip_count);
       setStatus('ready');
+      getBookmarkState(id).then((s) => setSaved(s.saved)).catch(() => {});
     } catch {
       setStatus('error');
     }
@@ -113,13 +118,22 @@ export default function PostViewScreen() {
           headerShown: true,
           title: `@${post.handle}`,
           headerRight: () => (
-            <Pressable
-              onPress={() => setReportOpen(true)}
-              hitSlop={12}
-              accessibilityRole="button"
-              accessibilityLabel="Report this post">
-              <Ionicons name="flag-outline" size={20} color={theme.text} />
-            </Pressable>
+            <View style={styles.headerRight}>
+              <Pressable
+                onPress={() => setSaveOpen(true)}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel={saved ? 'Saved — edit collection' : 'Save this post'}>
+                <Ionicons name={saved ? 'bookmark' : 'bookmark-outline'} size={20} color={saved ? theme.tint : theme.text} />
+              </Pressable>
+              <Pressable
+                onPress={() => setReportOpen(true)}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel="Report this post">
+                <Ionicons name="flag-outline" size={20} color={theme.text} />
+              </Pressable>
+            </View>
           ),
         }}
       />
@@ -202,6 +216,8 @@ export default function PostViewScreen() {
         onClose={() => setReportOpen(false)}
         options={POST_REPORT_REASONS.map((r) => ({ label: r, onPress: () => doReport(r) }))}
       />
+
+      <CollectionPicker postId={post.id} visible={saveOpen} onClose={() => setSaveOpen(false)} onChange={setSaved} />
     </ThemedView>
   );
 }
@@ -241,6 +257,7 @@ function PostVideo({ uri }: { uri: string }) {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 18 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 },
   content: { padding: 16, gap: 14 },
   media: { width: '100%', aspectRatio: 4 / 5, borderRadius: 16, backgroundColor: '#000' },

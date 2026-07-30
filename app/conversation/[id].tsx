@@ -14,6 +14,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming, ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -424,6 +425,14 @@ function MessageBubble({
   const textColor = mine ? '#fff' : theme.text;
   const lastTap = useRef(0);
 
+  // A 💯 that pops up over the bubble on a double-tap, then fades.
+  const burst = useSharedValue(0);
+  const burstStyle = useAnimatedStyle(() => ({ opacity: burst.value, transform: [{ scale: 0.5 + burst.value }] }));
+  const playBurst = () => {
+    // eslint-disable-next-line react-hooks/immutability -- Reanimated shared value, mutated off-render
+    burst.value = withSequence(withTiming(1, { duration: 130 }), withTiming(0, { duration: 430 }));
+  };
+
   // Aggregate reactions by emoji (with count + whether I reacted with it).
   const grouped = new Map<string, { count: number; mine: boolean }>();
   for (const r of reactions) {
@@ -438,6 +447,7 @@ function MessageBubble({
     const now = Date.now();
     if (now - lastTap.current < 300) {
       onReact(item.id, '💯'); // double-tap → 💯
+      playBurst();
       lastTap.current = 0;
     } else {
       lastTap.current = now;
@@ -483,18 +493,20 @@ function MessageBubble({
         {grouped.size > 0 ? (
           <View style={[styles.reactionRow, { justifyContent: mine ? 'flex-end' : 'flex-start' }]}>
             {[...grouped.entries()].map(([emoji, g]) => (
-              <Pressable
-                key={emoji}
-                onPress={() => !isPending && onReact(item.id, emoji)}
-                style={[styles.reactionChip, { backgroundColor: g.mine ? theme.tint : theme.backgroundElement, borderColor: theme.border }]}>
-                <ThemedText type="small" style={{ color: g.mine ? '#fff' : theme.text }}>
-                  {emoji}
-                  {g.count > 1 ? ` ${g.count}` : ''}
-                </ThemedText>
-              </Pressable>
+              <Animated.View key={emoji} entering={ZoomIn.springify().damping(13).stiffness(200)}>
+                <Pressable
+                  onPress={() => !isPending && onReact(item.id, emoji)}
+                  style={[styles.reactionChip, { backgroundColor: g.mine ? theme.tint : theme.backgroundElement, borderColor: theme.border }]}>
+                  <ThemedText type="small" style={{ color: g.mine ? '#fff' : theme.text }}>
+                    {emoji}
+                    {g.count > 1 ? ` ${g.count}` : ''}
+                  </ThemedText>
+                </Pressable>
+              </Animated.View>
             ))}
           </View>
         ) : null}
+        <Animated.Text pointerEvents="none" style={[styles.burst, burstStyle]}>💯</Animated.Text>
         <View style={[styles.meta, { justifyContent: mine ? 'flex-end' : 'flex-start' }]}>
           {isPending && item.status === 'failed' ? (
             <Pressable onPress={() => onRetry(item)}><ThemedText type="small" style={{ color: theme.danger }}>Failed · Retry</ThemedText></Pressable>
@@ -569,6 +581,7 @@ const styles = StyleSheet.create({
   meta: { flexDirection: 'row', marginTop: 2, marginHorizontal: 6 },
   reactionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 3, marginHorizontal: 4 },
   reactionChip: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, borderWidth: StyleSheet.hairlineWidth },
+  burst: { position: 'absolute', alignSelf: 'center', top: 6, fontSize: 46 },
   typing: { paddingHorizontal: 16, paddingBottom: 4 },
   banner: { padding: 12, borderTopWidth: StyleSheet.hairlineWidth },
   bannerRow: { flexDirection: 'row', gap: 8, justifyContent: 'center' },

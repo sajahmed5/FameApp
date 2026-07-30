@@ -14,6 +14,8 @@ import { formatRelative } from '@/lib/relative-time';
 import {
   getConversations,
   leaveConversation,
+  markConversationUnread,
+  setConversationArchived,
   setMuted,
   subscribeToInbox,
   type Conversation,
@@ -29,6 +31,7 @@ export default function MessagesScreen() {
   const { user } = useAuth();
   const [items, setItems] = useState<Conversation[]>([]);
   const [tab, setTab] = useState<'messages' | 'requests'>('messages');
+  const [showArchived, setShowArchived] = useState(false);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const openRow = useRef<Swipeable | null>(null);
@@ -56,10 +59,15 @@ export default function MessagesScreen() {
   );
 
   const requestCount = useMemo(() => items.filter((c) => c.is_request).length, [items]);
+  const archivedCount = useMemo(() => items.filter((c) => c.archived && !c.is_request).length, [items]);
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
     return items
-      .filter((c) => (tab === 'requests' ? c.is_request : !c.is_request))
+      .filter((c) =>
+        showArchived
+          ? c.archived && !c.is_request
+          : !c.archived && (tab === 'requests' ? c.is_request : !c.is_request),
+      )
       .filter((c) => {
         if (!q) return true;
         const name = c.type === 'group' ? c.name ?? 'Group' : c.other_display_name ?? '';
@@ -69,7 +77,7 @@ export default function MessagesScreen() {
           (c.last_body ?? '').toLowerCase().includes(q)
         );
       });
-  }, [items, tab, query]);
+  }, [items, tab, query, showArchived]);
 
   return (
     <ThemedView style={{ flex: 1 }}>
@@ -77,13 +85,28 @@ export default function MessagesScreen() {
         {(['messages', 'requests'] as const).map((t) => (
           <Pressable
             key={t}
-            onPress={() => setTab(t)}
-            style={[styles.tab, tab === t && { borderBottomColor: theme.tint, borderBottomWidth: 2 }]}>
-            <ThemedText type="smallBold" style={{ color: tab === t ? theme.text : theme.textSecondary }}>
+            onPress={() => {
+              setTab(t);
+              setShowArchived(false);
+            }}
+            style={[styles.tab, !showArchived && tab === t && { borderBottomColor: theme.tint, borderBottomWidth: 2 }]}>
+            <ThemedText type="smallBold" style={{ color: !showArchived && tab === t ? theme.text : theme.textSecondary }}>
               {t === 'messages' ? 'Messages' : `Requests${requestCount ? ` (${requestCount})` : ''}`}
             </ThemedText>
           </Pressable>
         ))}
+        <View style={{ flex: 1 }} />
+        {showArchived || archivedCount > 0 ? (
+          <Pressable
+            onPress={() => setShowArchived((v) => !v)}
+            style={styles.tab}
+            accessibilityRole="button"
+            accessibilityLabel={showArchived ? 'Back to inbox' : 'Archived conversations'}>
+            <ThemedText type="smallBold" style={{ color: showArchived ? theme.tint : theme.textSecondary }}>
+              {showArchived ? 'Back' : `Archived${archivedCount ? ` (${archivedCount})` : ''}`}
+            </ThemedText>
+          </Pressable>
+        ) : null}
       </View>
 
       <View style={[styles.search, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
@@ -126,6 +149,14 @@ export default function MessagesScreen() {
                 await leaveConversation(item.id);
                 void load();
               }}
+              onUnread={async () => {
+                await markConversationUnread(item.id);
+                void load();
+              }}
+              onArchive={async () => {
+                await setConversationArchived(item.id, !item.archived);
+                void load();
+              }}
               openRowRef={openRow}
             />
           )}
@@ -153,6 +184,8 @@ function ConversationRow({
   onOpen,
   onMute,
   onLeave,
+  onUnread,
+  onArchive,
   openRowRef,
 }: {
   conversation: Conversation;
@@ -160,6 +193,8 @@ function ConversationRow({
   onOpen: () => void;
   onMute: () => void;
   onLeave: () => void;
+  onUnread: () => void;
+  onArchive: () => void;
   openRowRef: React.MutableRefObject<Swipeable | null>;
 }) {
   const theme = useTheme();
@@ -178,6 +213,30 @@ function ConversationRow({
         if (openRowRef.current && openRowRef.current !== rowRef.current) openRowRef.current.close();
         openRowRef.current = rowRef.current;
       }}
+      renderLeftActions={() => (
+        <View style={styles.actions}>
+          <Pressable
+            onPress={() => {
+              rowRef.current?.close();
+              onUnread();
+            }}
+            style={[styles.action, { backgroundColor: theme.backgroundElement }]}>
+            <Ionicons name="mail-unread-outline" size={18} color={theme.text} />
+            <ThemedText type="small">Unread</ThemedText>
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              rowRef.current?.close();
+              onArchive();
+            }}
+            style={[styles.action, { backgroundColor: theme.tint }]}>
+            <Ionicons name={c.archived ? 'arrow-undo-outline' : 'archive-outline'} size={18} color="#fff" />
+            <ThemedText type="small" style={{ color: '#fff' }}>
+              {c.archived ? 'Unarchive' : 'Archive'}
+            </ThemedText>
+          </Pressable>
+        </View>
+      )}
       renderRightActions={() => (
         <View style={styles.actions}>
           <Pressable

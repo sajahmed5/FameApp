@@ -20,6 +20,7 @@ export type Conversation = {
   unread: boolean;
   muted: boolean;
   is_request: boolean;
+  archived: boolean;
 };
 
 export type Member = {
@@ -217,6 +218,18 @@ export function subscribeToReactions(onChange: () => void): () => void {
   return () => {
     void supabase.removeChannel(channel);
   };
+}
+
+/** Archive or unarchive a conversation for me (hidden from the main inbox). */
+export async function setConversationArchived(cid: string, archived: boolean): Promise<void> {
+  const { error } = await supabase.rpc('set_conversation_archived', { _cid: cid, _archived: archived });
+  if (error) throw error;
+}
+
+/** Mark a conversation unread (rewinds my read cursor to before the last message). */
+export async function markConversationUnread(cid: string): Promise<void> {
+  const { error } = await supabase.rpc('mark_conversation_unread', { _cid: cid });
+  if (error) throw error;
 }
 
 export function subscribeToInbox(onChange: () => void): () => void {

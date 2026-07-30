@@ -231,6 +231,7 @@ export default function OnboardingTagsScreen() {
 
   return (
     <AuthScreen
+      brand
       title="Pick a few interests"
       subtitle="Tap at least 3 tags. We use them to build your feed and suggest people to follow."
       footer={

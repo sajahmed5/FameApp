@@ -20,6 +20,8 @@ export type DeckCard = {
   tags: string[];
   /** The caller's own swipe on this post, if any (Following feed uses it to pre-fill the heart). */
   my_direction?: 'left' | 'right' | null;
+  /** Total media items (1 = single). >1 means a carousel; set by resolveDeckMedia. */
+  media_count?: number;
 };
 
 export type SwipeDirection = 'left' | 'right';

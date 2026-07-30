@@ -208,7 +208,7 @@ export default function CameraScreen() {
           Or pick something you&apos;ve already shot:
         </ThemedText>
         <Button
-          title="Choose from library"
+          title={target === 'post' ? 'Choose from library (up to 5)' : 'Choose from library'}
           variant="secondary"
           onPress={() => pickFromLibrary(startNewComposition, startMultiComposition, target === 'post', setBusy)}
         />
@@ -281,6 +281,11 @@ export default function CameraScreen() {
             onPress={() => !recording && setMode('video')}
           />
         </View>
+        {target === 'post' ? (
+          <ThemedText type="small" style={styles.multiHint}>
+            Pick up to 5 from your library for a carousel
+          </ThemedText>
+        ) : null}
         <View style={styles.shutterRow}>
           <IconButton
             name="images-outline"
@@ -480,6 +485,7 @@ const styles = StyleSheet.create({
   recText: { color: '#fff' },
   bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, alignItems: 'center', gap: 16 },
   modeRow: { flexDirection: 'row', gap: 24 },
+  multiHint: { color: 'rgba(255,255,255,0.75)', textAlign: 'center' },
   shutterRow: {
     flexDirection: 'row',
     alignItems: 'center',

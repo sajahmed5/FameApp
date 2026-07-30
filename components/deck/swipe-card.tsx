@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import { memo } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -40,6 +41,22 @@ export const SwipeCard = memo(function SwipeCard({
   return (
     <View style={styles.card}>
       <CardMedia card={card} isActive={isActive} />
+
+      {/* Carousel marker. The deck's horizontal swipe is skip/like and double-tap is
+          like, so paging inside the card would fight the core gestures — instead the
+          badge says how many photos there are and opens the post, which has the pager. */}
+      {isActive && (card.media_count ?? 1) > 1 ? (
+        <Pressable
+          onPress={() => router.push(`/post/${card.id}`)}
+          style={[styles.carousel, { top: insets.top + 16 }]}
+          accessibilityRole="button"
+          accessibilityLabel={`${card.media_count} photos — open the post to see them all`}>
+          <Ionicons name="copy" size={13} color="#fff" />
+          <ThemedText type="small" style={styles.carouselText}>
+            {card.media_count}
+          </ThemedText>
+        </Pressable>
+      ) : null}
 
       {/* Top-right: like / skip / comment. Tapping the heart likes, the cross skips —
           same commit path as a swipe (handled by the parent via onLike/onSkip). */}
@@ -199,6 +216,18 @@ const styles = StyleSheet.create({
     gap: 14,
     alignItems: 'center',
   },
+  carousel: {
+    position: 'absolute',
+    left: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  carouselText: { color: '#fff', fontWeight: '600' },
   stat: { alignItems: 'center', gap: 2 },
   commentButton: { alignItems: 'center', gap: 2, marginTop: 4 },
   actionButton: { alignItems: 'center', marginTop: 4 },

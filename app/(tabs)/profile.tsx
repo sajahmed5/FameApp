@@ -152,7 +152,6 @@ export default function ProfileScreen() {
           <View style={styles.actions}>
             <ActionButton icon="create-outline" label="Edit profile" onPress={() => router.push('/profile/edit')} />
             <ActionButton icon="bar-chart-outline" label="Analytics" onPress={() => router.push('/analytics')} />
-            <ActionButton icon="sparkles-outline" label="Points" onPress={() => router.push('/points')} />
             <ActionButton icon="person-add-outline" label="Requests" badge={requestCount} onPress={() => router.push('/profile/requests')} />
           </View>
         }

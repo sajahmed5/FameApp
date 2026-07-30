@@ -57,8 +57,10 @@ export default function ComposeScreen() {
   }
 
   function retake() {
+    // Go straight back to the camera (not the deck). Navigate FIRST so the "composition
+    // is null" guard effect doesn't also fire a router.back() and overshoot to Home.
+    router.replace('/camera');
     clear();
-    router.back();
   }
 
   return (

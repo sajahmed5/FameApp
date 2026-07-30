@@ -24,10 +24,12 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
+import { CollectionPicker } from '@/components/collection-picker';
 import { ActionMenu } from '@/components/ui/action-menu';
 import { useTheme } from '@/hooks/use-theme';
 import { trackFirst } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth-context';
+import { getBookmarkState } from '@/lib/bookmarks';
 import { awardShare } from '@/lib/points';
 import { useAndroidBack } from '@/lib/use-android-back';
 import type { Conversation } from '@/lib/messages';
@@ -60,6 +62,18 @@ export function ShareSheet({
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    void getBookmarkState(post.id)
+      .then((s) => alive && setSaved(s.saved))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [post.id]);
 
   // Draggable sheet: opens at COLLAPSED, drag the grabber up to EXPANDED (near full
   // screen) or down past a threshold to dismiss.
@@ -173,6 +187,9 @@ export function ShareSheet({
             <View style={styles.headerRow}>
               <ThemedText type="subtitle">Share</ThemedText>
               <View style={styles.headerActions}>
+                <Pressable onPress={() => setSaveOpen(true)} hitSlop={10} accessibilityRole="button" accessibilityLabel={saved ? 'Saved — edit collection' : 'Save this post'}>
+                  <Ionicons name={saved ? 'bookmark' : 'bookmark-outline'} size={20} color={saved ? theme.tint : theme.text} />
+                </Pressable>
                 <Pressable onPress={() => setReportOpen(true)} hitSlop={10} accessibilityRole="button" accessibilityLabel="Report this post">
                   <Ionicons name="flag-outline" size={20} color={theme.text} />
                 </Pressable>
@@ -250,6 +267,8 @@ export function ShareSheet({
           onClose={() => setReportOpen(false)}
           options={POST_REPORT_REASONS.map((r) => ({ label: r, onPress: () => doReport(r) }))}
         />
+
+        <CollectionPicker postId={post.id} visible={saveOpen} onClose={() => setSaveOpen(false)} onChange={setSaved} />
       </GestureHandlerRootView>
     </Modal>
   );

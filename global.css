@@ -8,19 +8,6 @@
   --font-serif: Georgia, 'Times New Roman', serif;
 }
 
-/* iOS standalone PWA safe areas. react-native-safe-area-context reports 0 insets on
-   web, so instead of relying on it we inset the whole app at the root with the CSS
-   env() vars (viewport-fit=cover, set in index.html, makes these resolve to the real
-   notch / home-indicator sizes). This keeps the header below the status bar and the
-   message composer / tab bar above the home indicator. No-op on non-notched devices. */
-#root {
-  box-sizing: border-box;
-  padding-top: env(safe-area-inset-top);
-  padding-right: env(safe-area-inset-right);
-  padding-bottom: env(safe-area-inset-bottom);
-  padding-left: env(safe-area-inset-left);
-}
-
 /* React Native Web renders TextInput as a native <input>/<textarea>. Hide the
    browser's default (blue) focus outline — the app draws its own field borders —
    but keep an accessible orange ring for keyboard navigation only. */

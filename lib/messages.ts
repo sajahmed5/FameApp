@@ -162,6 +162,28 @@ export async function reportConversation(cid: string, reason: string): Promise<v
   if (error) throw error;
 }
 
+// ---- conversation details ---------------------------------------------------
+export type SharedMedia = { message_id: string; media_url: string; created_at: string };
+export type SharedGroup = { id: string; name: string | null; avatar_url: string | null; member_count: number };
+
+/** All images shared in a conversation, newest first (signed for display). */
+export async function getConversationMedia(cid: string): Promise<SharedMedia[]> {
+  const { data, error } = await supabase.rpc('get_conversation_media', { _cid: cid });
+  if (error) throw error;
+  const rows = (data ?? []) as SharedMedia[];
+  const paths = rows.map((r) => r.media_url).filter((u) => isStoragePath(u));
+  if (paths.length === 0) return rows;
+  const signed = await signMediaPaths(paths);
+  return rows.map((r) => ({ ...r, media_url: signed.get(r.media_url) ?? r.media_url }));
+}
+
+/** Group conversations that the caller and `otherId` are both in. */
+export async function getSharedGroups(otherId: string): Promise<SharedGroup[]> {
+  const { data, error } = await supabase.rpc('get_shared_groups', { _other: otherId });
+  if (error) throw error;
+  return (data ?? []) as SharedGroup[];
+}
+
 // ---- realtime ---------------------------------------------------------------
 /**
  * Subscribe to a thread: new/edited messages, read-position (member) changes, and

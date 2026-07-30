@@ -282,7 +282,7 @@ export default function ConversationScreen() {
 
   return (
     <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
-      <Header title={title} subtitle={detail?.type === 'group' ? `${detail.members.length} members` : `@${other?.handle ?? ''}`} onBack={() => router.back()} onMenu={() => setMenu(true)} theme={theme} />
+      <Header title={title} subtitle={detail?.type === 'group' ? `${detail.members.length} members` : `@${other?.handle ?? ''}`} onBack={() => router.back()} onMenu={() => setMenu(true)} onPressTitle={() => router.push({ pathname: '/conversation/details', params: { cid } })} theme={theme} />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={insets.top + 44}>
         <FlatList
@@ -382,14 +382,14 @@ function isSeen(item: Message | Pending, detail: ConversationDetail | null, meId
   return !!other?.last_read_at && other.last_read_at >= item.created_at;
 }
 
-function Header({ title, subtitle, onBack, onMenu, theme }: { title: string; subtitle?: string; onBack: () => void; onMenu: () => void; theme: ReturnType<typeof useTheme> }) {
+function Header({ title, subtitle, onBack, onMenu, onPressTitle, theme }: { title: string; subtitle?: string; onBack: () => void; onMenu: () => void; onPressTitle?: () => void; theme: ReturnType<typeof useTheme> }) {
   return (
     <View style={[styles.header, { borderBottomColor: theme.border }]}>
       <Pressable onPress={onBack} hitSlop={10}><Ionicons name="chevron-back" size={26} color={theme.text} /></Pressable>
-      <View style={{ flex: 1 }}>
+      <Pressable style={{ flex: 1 }} onPress={onPressTitle} disabled={!onPressTitle} accessibilityRole="button" accessibilityLabel="Conversation details">
         <ThemedText type="smallBold" numberOfLines={1}>{title}</ThemedText>
         {subtitle ? <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>{subtitle}</ThemedText> : null}
-      </View>
+      </Pressable>
       <Pressable onPress={onMenu} hitSlop={10} accessibilityLabel="Conversation options"><Ionicons name="ellipsis-horizontal" size={22} color={theme.text} /></Pressable>
     </View>
   );

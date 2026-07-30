@@ -150,6 +150,8 @@ export function uploadToPipeline(
 
 export type CreatePostInput = {
   result: PipelineResult;
+  /** Carousel extras (already pipeline-processed), in display order after the cover. */
+  extras?: PipelineResult[];
   caption: string;
   altText: string;
   visibility: 'public' | 'private';
@@ -194,6 +196,21 @@ export async function createPost(input: CreatePostInput): Promise<string> {
     .single();
   if (error) throw error;
   const postId = (post as { id: string }).id;
+
+  // Carousel extras: one row per additional media item. Each consumed its own
+  // pipeline verdict via the post_media trigger (a bad extra downgrades the post).
+  if (input.extras?.length) {
+    const { error: mediaErr } = await supabase.from('post_media').insert(
+      input.extras.map((r, i) => ({
+        post_id: postId,
+        position: i + 1,
+        media_url: r.media_url,
+        thumbnail_url: r.thumbnail_url,
+        media_type: r.media_type,
+      })),
+    );
+    if (mediaErr) throw mediaErr;
+  }
 
   // Resolve tag names → ids (find-or-create), then attach with provenance.
   const resolved = await Promise.all(

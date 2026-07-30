@@ -40,9 +40,12 @@ type PipelinePhase = 'uploading' | 'ready' | 'rejected' | 'failed';
 export type Composition = {
   id: string;
   media: PickedMedia;
-  progress: number; // 0..1
+  /** Carousel extras (items 2..5); empty for a single-media post. */
+  extras: PickedMedia[];
+  progress: number; // 0..1 across ALL items
   phase: PipelinePhase;
   result: PipelineResult | null;
+  extraResults: PipelineResult[];
   rejection: string | null; // adult-scan rejection message
   uploadError: string | null; // retryable failure
   draft: Draft;
@@ -54,8 +57,8 @@ export type Composition = {
 
 type UploadContextValue = {
   composition: Composition | null;
-  /** Start a new composition from picked/captured media. */
-  begin: (media: PickedMedia, defaults: { visibility: 'public' | 'private' }) => void;
+  /** Start a new composition from picked/captured media (+ optional carousel extras). */
+  begin: (media: PickedMedia, defaults: { visibility: 'public' | 'private' }, extras?: PickedMedia[]) => void;
   updateDraft: (patch: Partial<Draft>) => void;
   /** Retry a failed upload — keeps the draft (no re-entering caption/tags). */
   retryUpload: () => void;
@@ -92,6 +95,7 @@ export function UploadManagerProvider({ children }: { children: ReactNode }) {
     try {
       const id = await createPost({
         result: c.result,
+        extras: c.extraResults,
         caption: c.draft.caption,
         altText: c.draft.altText,
         visibility: c.draft.visibility,
@@ -121,17 +125,30 @@ export function UploadManagerProvider({ children }: { children: ReactNode }) {
           abortRef.current = cb;
         },
       };
-      uploadToPipeline(
-        c.media,
-        (frac) => set((x) => (x.id === id ? { ...x, progress: frac } : x)),
-        aborter,
-      )
-        .then((result) => {
-          set((x) => (x.id === id ? { ...x, phase: 'ready', result, progress: 1 } : x));
+      // Upload every item through the pipeline sequentially (cover first), reporting
+      // combined progress. One rejected item rejects the whole composition.
+      const items = [c.media, ...c.extras];
+      const total = items.length;
+      (async () => {
+        try {
+          const results: PipelineResult[] = [];
+          for (let i = 0; i < total; i++) {
+            if (ref.current?.id !== id) return; // replaced/cleared mid-flight
+            const result = await uploadToPipeline(
+              items[i],
+              (frac) => set((x) => (x.id === id ? { ...x, progress: (i + frac) / total } : x)),
+              aborter,
+            );
+            results.push(result);
+          }
+          set((x) =>
+            x.id === id
+              ? { ...x, phase: 'ready', result: results[0], extraResults: results.slice(1), progress: 1 }
+              : x,
+          );
           // If the user already asked to post, complete it now.
           if (ref.current?.submitRequested) void doSubmit();
-        })
-        .catch((err) => {
+        } catch (err) {
           if (err instanceof UploadRejected) {
             set((x) =>
               x.id === id
@@ -149,20 +166,23 @@ export function UploadManagerProvider({ children }: { children: ReactNode }) {
                 : x,
             );
           }
-        });
+        }
+      })();
     },
     [set, doSubmit],
   );
 
   const begin = useCallback(
-    (media: PickedMedia, defaults: { visibility: 'public' | 'private' }) => {
+    (media: PickedMedia, defaults: { visibility: 'public' | 'private' }, extras: PickedMedia[] = []) => {
       abortRef.current?.();
       const comp: Composition = {
         id: nextId(),
         media,
+        extras: extras.slice(0, 4), // cover + up to 4 extras = 5 items max
         progress: 0,
         phase: 'uploading',
         result: null,
+        extraResults: [],
         rejection: null,
         uploadError: null,
         draft: {
@@ -196,7 +216,7 @@ export function UploadManagerProvider({ children }: { children: ReactNode }) {
   const retryUpload = useCallback(() => {
     const c = ref.current;
     if (!c) return;
-    set((x) => ({ ...x, phase: 'uploading', progress: 0, uploadError: null }));
+    set((x) => ({ ...x, phase: 'uploading', progress: 0, uploadError: null, extraResults: [] }));
     runPipeline(c.id);
   }, [set, runPipeline]);
 

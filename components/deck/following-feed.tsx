@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { memo, useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CollectionPicker } from '@/components/collection-picker';
@@ -19,6 +19,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { getBookmarkState } from '@/lib/bookmarks';
 import { fetchFollowingFeed, recordSwipe, type DeckCard } from '@/lib/deck';
 import { formatCount } from '@/lib/format';
+import { getExtrasForPosts, type PostMediaItem } from '@/lib/posts';
 import { resolveDeckMedia } from '@/lib/media';
 import { formatRelative } from '@/lib/relative-time';
 
@@ -38,12 +39,14 @@ export function FollowingFeed() {
   const [atEnd, setAtEnd] = useState(false);
   const [commentsFor, setCommentsFor] = useState<DeckCard | null>(null);
   const [shareFor, setShareFor] = useState<DeckCard | null>(null);
+  const [extrasMap, setExtrasMap] = useState<Map<string, PostMediaItem[]>>(new Map());
 
   const load = useCallback(async () => {
     try {
       const first = await resolveDeckMedia(await fetchFollowingFeed(null, PAGE));
       setCards(first);
       setAtEnd(first.length < PAGE);
+      getExtrasForPosts(first.map((c) => c.id)).then(setExtrasMap).catch(() => {});
     } catch {
       setCards([]);
     }
@@ -71,6 +74,9 @@ export function FollowingFeed() {
       const next = await resolveDeckMedia(await fetchFollowingFeed(before, PAGE));
       setCards((prev) => [...(prev ?? []), ...next]);
       if (next.length < PAGE) setAtEnd(true);
+      getExtrasForPosts(next.map((c) => c.id))
+        .then((m) => setExtrasMap((prev) => new Map([...prev, ...m])))
+        .catch(() => {});
     } catch {
       /* keep what we have */
     } finally {
@@ -108,6 +114,7 @@ export function FollowingFeed() {
         renderItem={({ item }) => (
           <FeedCard
             card={item}
+            extras={extrasMap.get(item.id) ?? NO_EXTRAS}
             onOpenComments={() => setCommentsFor(item)}
             onOpenShare={() => setShareFor(item)}
           />
@@ -135,17 +142,23 @@ export function FollowingFeed() {
   );
 }
 
+const NO_EXTRAS: PostMediaItem[] = [];
+
 const FeedCard = memo(function FeedCard({
   card,
+  extras,
   onOpenComments,
   onOpenShare,
 }: {
   card: DeckCard;
+  extras: PostMediaItem[];
   onOpenComments: () => void;
   onOpenShare: () => void;
 }) {
   const theme = useTheme();
   const router = useRouter();
+  const { width: winW } = useWindowDimensions();
+  const [page, setPage] = useState(0);
   // Pre-fill the heart if you already swiped right on this post (e.g. from the main deck).
   const [liked, setLiked] = useState(card.my_direction === 'right');
   const [likeCount, setLikeCount] = useState(card.like_count);
@@ -191,15 +204,46 @@ const FeedCard = memo(function FeedCard({
         </View>
       </Pressable>
 
-      {card.media_type === 'video' ? (
-        <FeedVideo uri={card.media_url} />
+      {extras.length === 0 ? (
+        card.media_type === 'video' ? (
+          <FeedVideo uri={card.media_url} />
+        ) : (
+          <Image
+            source={{ uri: card.media_url }}
+            style={styles.media}
+            contentFit="cover"
+            accessibilityLabel={card.alt_text ?? undefined}
+          />
+        )
       ) : (
-        <Image
-          source={{ uri: card.media_url }}
-          style={styles.media}
-          contentFit="cover"
-          accessibilityLabel={card.alt_text ?? undefined}
-        />
+        // Carousel: horizontal pager (cover + extras) with a counter pill + dots.
+        <View>
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onScroll={(e) => setPage(Math.round(e.nativeEvent.contentOffset.x / winW))}
+            scrollEventThrottle={16}
+            style={{ width: winW }}>
+            {[{ media_url: card.media_url, media_type: card.media_type }, ...extras].map((m, i) => (
+              <View key={i} style={{ width: winW }}>
+                {m.media_type === 'video' ? (
+                  <FeedVideo uri={m.media_url} />
+                ) : (
+                  <Image source={{ uri: m.media_url }} style={styles.media} contentFit="cover" />
+                )}
+              </View>
+            ))}
+          </ScrollView>
+          <View style={styles.pagePill}>
+            <ThemedText type="small" style={{ color: '#fff' }}>{page + 1}/{extras.length + 1}</ThemedText>
+          </View>
+          <View style={styles.dots}>
+            {Array.from({ length: extras.length + 1 }).map((_, i) => (
+              <View key={i} style={[styles.dot, { backgroundColor: i === page ? BRAND.accent : theme.backgroundSelected }]} />
+            ))}
+          </View>
+        </View>
       )}
 
       <View style={styles.actions}>
@@ -263,6 +307,9 @@ const styles = StyleSheet.create({
   card: { borderBottomWidth: StyleSheet.hairlineWidth, paddingBottom: 12, marginBottom: 4 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 10 },
   media: { width: '100%', aspectRatio: 4 / 5, backgroundColor: '#111' },
+  pagePill: { position: 'absolute', top: 10, right: 10, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
+  dots: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 8 },
+  dot: { width: 6, height: 6, borderRadius: 3 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 20, paddingHorizontal: 14, paddingTop: 10 },
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   caption: { paddingHorizontal: 14, paddingTop: 8 },

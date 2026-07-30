@@ -88,6 +88,16 @@ export default function CameraScreen() {
     [target, begin, profile?.is_private, router],
   );
 
+  // Multiple gallery picks → carousel post. Skips the single-image editor and goes
+  // straight to compose; the first selection is the cover.
+  const startMultiComposition = useCallback(
+    (items: PickedMedia[]) => {
+      begin(items[0], { visibility: profile?.is_private ? 'private' : 'public' }, items.slice(1));
+      router.push('/compose');
+    },
+    [begin, profile?.is_private, router],
+  );
+
   const clearTimer = useCallback(() => {
     if (recTimer.current) clearInterval(recTimer.current);
     recTimer.current = null;
@@ -200,7 +210,7 @@ export default function CameraScreen() {
         <Button
           title="Choose from library"
           variant="secondary"
-          onPress={() => pickFromLibrary(startNewComposition, setBusy)}
+          onPress={() => pickFromLibrary(startNewComposition, startMultiComposition, target === 'post', setBusy)}
         />
       </View>
     );
@@ -274,7 +284,7 @@ export default function CameraScreen() {
         <View style={styles.shutterRow}>
           <IconButton
             name="images-outline"
-            onPress={() => pickFromLibrary(startNewComposition, setBusy)}
+            onPress={() => pickFromLibrary(startNewComposition, startMultiComposition, target === 'post', setBusy)}
             disabled={recording}
           />
           <ShutterButton
@@ -300,7 +310,12 @@ export default function CameraScreen() {
   );
 }
 
-async function pickFromLibrary(onPicked: (m: PickedMedia) => void, setBusy: (b: boolean) => void) {
+async function pickFromLibrary(
+  onPicked: (m: PickedMedia) => void,
+  onPickedMulti: (items: PickedMedia[]) => void,
+  allowMultiple: boolean,
+  setBusy: (b: boolean) => void,
+) {
   const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!perm.granted) {
     if (!perm.canAskAgain) Linking.openSettings();
@@ -312,18 +327,28 @@ async function pickFromLibrary(onPicked: (m: PickedMedia) => void, setBusy: (b: 
       mediaTypes: ['images', 'videos'],
       quality: 0.9,
       videoMaxDuration: 60,
+      // Carousel: pick up to 5 for a post; other targets stay single-select.
+      allowsMultipleSelection: allowMultiple,
+      selectionLimit: 5,
+      orderedSelection: true,
     });
     if (res.canceled || !res.assets?.length) return;
-    const a = res.assets[0];
-    const type = a.type === 'video' ? 'video' : 'image';
-    onPicked({
-      uri: a.uri,
-      type,
-      mime: a.mimeType ?? (type === 'video' ? 'video/mp4' : 'image/jpeg'),
-      fileName: a.fileName ?? undefined,
-      width: a.width,
-      height: a.height,
-    });
+    const toPicked = (a: (typeof res.assets)[number]): PickedMedia => {
+      const type = a.type === 'video' ? 'video' : 'image';
+      return {
+        uri: a.uri,
+        type,
+        mime: a.mimeType ?? (type === 'video' ? 'video/mp4' : 'image/jpeg'),
+        fileName: a.fileName ?? undefined,
+        width: a.width,
+        height: a.height,
+      };
+    };
+    if (res.assets.length > 1) {
+      onPickedMulti(res.assets.slice(0, 5).map(toPicked));
+      return;
+    }
+    onPicked(toPicked(res.assets[0]));
   } finally {
     setBusy(false);
   }

@@ -165,6 +165,44 @@ export const POST_REPORT_REASONS = [
 ] as const;
 
 /** File a report against a post. Mirrors reportUser/reportComment (RLS-guarded insert). */
+// ---- carousel extras ---------------------------------------------------------
+/** One extra carousel item (position >= 1; the post row itself is item 0). */
+export type PostMediaItem = {
+  post_id: string;
+  position: number;
+  media_url: string; // signed for display
+  thumbnail_url: string;
+  media_type: 'image' | 'video';
+};
+
+/** Extra media for one post, ordered. Empty for single-media posts. */
+export async function getPostExtras(postId: string): Promise<PostMediaItem[]> {
+  const map = await getExtrasForPosts([postId]);
+  return map.get(postId) ?? [];
+}
+
+/** Batch: extra media for many posts (Following feed). RLS hides invisible posts. */
+export async function getExtrasForPosts(ids: string[]): Promise<Map<string, PostMediaItem[]>> {
+  const out = new Map<string, PostMediaItem[]>();
+  if (ids.length === 0) return out;
+  const { data, error } = await supabase
+    .from('post_media')
+    .select('post_id, position, media_url, thumbnail_url, media_type')
+    .in('post_id', ids)
+    .order('position', { ascending: true });
+  if (error) throw error;
+  const rows = (data ?? []) as PostMediaItem[];
+  if (rows.length === 0) return out;
+  const signed = await signMediaPaths(rows.map((r) => r.media_url));
+  for (const r of rows) {
+    const item = { ...r, media_url: signed.get(r.media_url) ?? r.media_url };
+    const list = out.get(r.post_id) ?? [];
+    list.push(item);
+    out.set(r.post_id, list);
+  }
+  return out;
+}
+
 /** Delete one of my own posts (cascades comments/swipes/tags/bookmarks). */
 export async function deletePost(id: string): Promise<void> {
   const { error } = await supabase.rpc('delete_post', { _id: id });

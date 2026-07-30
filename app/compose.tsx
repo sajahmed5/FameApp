@@ -44,7 +44,7 @@ export default function ComposeScreen() {
 
   if (!composition) return <ThemedView style={styles.fill} />;
 
-  const { media, draft, phase, progress, result, rejection, uploadError } = composition;
+  const { media, extras, draft, phase, progress, result, rejection, uploadError } = composition;
   const analysing = phase === 'uploading';
   const flagged = result?.moderation_status === 'flagged';
   const canPost = draft.tags.length > 0 && phase !== 'rejected' && !composition.posting;
@@ -84,7 +84,29 @@ export default function ComposeScreen() {
                 {media.type === 'video' ? 'Reshoot' : 'Retake'}
               </ThemedText>
             </Pressable>
+            {extras.length > 0 ? (
+              <View style={styles.countPill}>
+                <Ionicons name="copy" size={12} color="#fff" />
+                <ThemedText type="small" style={styles.retakeText}>{extras.length + 1}</ThemedText>
+              </View>
+            ) : null}
           </View>
+
+          {/* Carousel strip: the cover + every extra, in posting order. */}
+          {extras.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.strip}>
+              {[media, ...extras].map((m, i) => (
+                <View key={`${m.uri}-${i}`}>
+                  <Image source={{ uri: m.uri }} style={styles.stripThumb} contentFit="cover" />
+                  {i === 0 ? (
+                    <View style={styles.stripBadge}>
+                      <ThemedText type="small" style={styles.retakeText}>Cover</ThemedText>
+                    </View>
+                  ) : null}
+                </View>
+              ))}
+            </ScrollView>
+          ) : null}
 
           {/* Upload progress / status */}
           <UploadStatus
@@ -307,6 +329,10 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   content: { padding: 16, gap: 18 },
   previewWrap: { borderRadius: 16, overflow: 'hidden' },
+  countPill: { position: 'absolute', top: 12, left: 12, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  strip: { flexDirection: 'row', gap: 8, paddingVertical: 10 },
+  stripThumb: { width: 64, height: 64, borderRadius: 10, backgroundColor: '#000' },
+  stripBadge: { position: 'absolute', bottom: 4, alignSelf: 'center', backgroundColor: 'rgba(0,0,0,0.65)', borderRadius: 6, paddingHorizontal: 5, paddingVertical: 1 },
   preview: { width: '100%', aspectRatio: 4 / 5, backgroundColor: '#000' },
   retake: {
     position: 'absolute',

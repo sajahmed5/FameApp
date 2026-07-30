@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { CollectionPicker } from '@/components/collection-picker';
 import { CommentSheet } from '@/components/comments/comment-sheet';
@@ -19,15 +19,19 @@ import { getBookmarkState } from '@/lib/bookmarks';
 import { confirm } from '@/lib/confirm';
 import { recordSwipe, undoSwipe } from '@/lib/deck';
 import { formatCount } from '@/lib/format';
-import { deletePost, getPostDetail, POST_REPORT_REASONS, reportPost, type PostDetail } from '@/lib/posts';
+import { deletePost, getPostDetail, getPostExtras, POST_REPORT_REASONS, reportPost, type PostDetail, type PostMediaItem } from '@/lib/posts';
 
 export default function PostViewScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { user } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { width: winW } = useWindowDimensions();
+  const pageW = winW - 32; // styles.content horizontal padding
   const [post, setPost] = useState<PostDetail | null>(null);
   const [ownerMenu, setOwnerMenu] = useState(false);
+  const [extras, setExtras] = useState<PostMediaItem[]>([]);
+  const [page, setPage] = useState(0);
   const [status, setStatus] = useState<'loading' | 'ready' | 'missing' | 'error'>('loading');
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [commentCount, setCommentCount] = useState(0);
@@ -55,6 +59,7 @@ export default function PostViewScreen() {
       setSkipCount(data.skip_count);
       setStatus('ready');
       getBookmarkState(id).then((s) => setSaved(s.saved)).catch(() => {});
+      getPostExtras(id).then(setExtras).catch(() => setExtras([]));
     } catch {
       setStatus('error');
     }
@@ -143,10 +148,41 @@ export default function PostViewScreen() {
         }}
       />
       <ScrollView contentContainerStyle={styles.content}>
-        {post.media_type === 'video' ? (
-          <PostVideo uri={post.media_url} />
+        {extras.length === 0 ? (
+          post.media_type === 'video' ? (
+            <PostVideo uri={post.media_url} />
+          ) : (
+            <Image source={{ uri: post.media_url }} style={styles.media} contentFit="cover" />
+          )
         ) : (
-          <Image source={{ uri: post.media_url }} style={styles.media} contentFit="cover" />
+          // Carousel: cover + extras in a horizontal pager with dots + counter.
+          <View>
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onScroll={(e) => setPage(Math.round(e.nativeEvent.contentOffset.x / pageW))}
+              scrollEventThrottle={16}
+              style={{ width: pageW, borderRadius: 16 }}>
+              {[{ media_url: post.media_url, media_type: post.media_type }, ...extras].map((m, i) => (
+                <View key={i} style={{ width: pageW }}>
+                  {m.media_type === 'video' ? (
+                    <PostVideo uri={m.media_url} />
+                  ) : (
+                    <Image source={{ uri: m.media_url }} style={styles.media} contentFit="cover" />
+                  )}
+                </View>
+              ))}
+            </ScrollView>
+            <View style={styles.pagePill}>
+              <ThemedText type="small" style={{ color: '#fff' }}>{page + 1}/{extras.length + 1}</ThemedText>
+            </View>
+            <View style={styles.dots}>
+              {Array.from({ length: extras.length + 1 }).map((_, i) => (
+                <View key={i} style={[styles.dot, { backgroundColor: i === page ? theme.tint : theme.backgroundSelected }]} />
+              ))}
+            </View>
+          </View>
         )}
 
         {/* Tap the heart to like/unlike, the cross to skip/un-skip. */}
@@ -298,6 +334,9 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 },
   content: { padding: 16, gap: 14 },
   media: { width: '100%', aspectRatio: 4 / 5, borderRadius: 16, backgroundColor: '#000' },
+  pagePill: { position: 'absolute', top: 10, right: 10, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
+  dots: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 8 },
+  dot: { width: 6, height: 6, borderRadius: 3 },
   stats: { flexDirection: 'row', gap: 20 },
   stat: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   caption: {},

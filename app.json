@@ -8,7 +8,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "phixr",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "updates": {
       "url": "https://u.expo.dev/ce6bcabb-42f6-4ae2-90d7-5ca670af9229"
     },
@@ -17,6 +16,9 @@
     },
     "ios": {
       "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      },
       "bundleIdentifier": "com.phixr.app",
       "associatedDomains": ["applinks:joinphixr.com", "applinks:www.joinphixr.com"]
     },

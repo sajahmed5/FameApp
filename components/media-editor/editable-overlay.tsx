@@ -81,15 +81,24 @@ export function EditableOverlay({
     })
     .onEnd(() => runOnJS(commit)());
 
-  const tap = Gesture.Tap().onEnd(() => runOnJS(onSelect)(layer.id));
+  // Both taps run on the JS thread. They do nothing but call React callbacks, so there's
+  // no reason to workletize them — and doing so serialised `layer` plus two closures
+  // into the UI runtime on every render, where a throw is a hard crash rather than a
+  // caught error. A tester crashed here after adding text and then a sticker
+  // (RCTFatal from inside WorkletRuntime::runSync). Pan/pinch/rotate stay on the UI
+  // thread, because those genuinely need to be smooth.
+  const tap = Gesture.Tap()
+    .runOnJS(true)
+    .onEnd(() => onSelect(layer.id));
 
   // Double-tap re-opens the text editor. The corner pencil badge does the same job, but
   // it's a 24pt target that gets clipped when the layer sits near the canvas edge.
   const doubleTap = Gesture.Tap()
+    .runOnJS(true)
     .numberOfTaps(2)
     .onEnd(() => {
-      runOnJS(onSelect)(layer.id);
-      if (layer.kind === 'text') runOnJS(onEditText)(layer.id);
+      onSelect(layer.id);
+      if (layer.kind === 'text') onEditText(layer.id);
     });
 
   const gesture = Gesture.Simultaneous(pan, pinch, rotate, Gesture.Exclusive(doubleTap, tap));

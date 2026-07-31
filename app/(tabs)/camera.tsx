@@ -232,7 +232,12 @@ export default function CameraScreen() {
 
       {/* Top controls */}
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-        <IconButton name="close" onPress={() => router.back()} />
+        {/* Equal-flex sides so the Post/Story toggle is centred on the SCREEN. With
+            space-between it drifted left, because there's one button here and two
+            opposite. */}
+        <View style={styles.topSide}>
+          <IconButton name="close" onPress={() => router.back()} />
+        </View>
         <View style={styles.destToggle}>
           {(['post', 'story'] as const).map((t) => (
             <Pressable
@@ -459,9 +464,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
   },
-  topRight: { flexDirection: 'row', gap: 8 },
-  destToggle: { flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 999, padding: 3 },
-  destTab: { paddingHorizontal: 14, paddingVertical: 5, borderRadius: 999 },
+  topSide: { flex: 1, flexDirection: 'row', alignItems: 'flex-start' },
+  topRight: { flex: 1, flexDirection: 'row', gap: 8, justifyContent: 'flex-end' },
+  destToggle: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderRadius: 999,
+    padding: 4,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.18)',
+  },
+  // Equal width, or "Post" and "Story" give the selected pill two different sizes.
+  destTab: { minWidth: 74, paddingVertical: 6, borderRadius: 999, alignItems: 'center' },
   iconBtn: {
     width: 44,
     height: 44,

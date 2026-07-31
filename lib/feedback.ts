@@ -5,7 +5,12 @@ import { supabase } from '@/lib/supabase';
 
 export type FeedbackKind = 'bug' | 'idea' | 'other';
 
-export type SubmittedFeedback = { ref: number };
+export type SubmittedFeedback = {
+  ref: number;
+  /** True when a screenshot was requested but couldn't be uploaded — the report still
+   *  saved. Surfaced in the UI so a silent failure can't go unnoticed again. */
+  screenshotFailed: boolean;
+};
 
 /**
  * File a product issue report. Optionally uploads a screenshot of the screen the
@@ -26,12 +31,14 @@ export async function submitFeedback(input: {
   if (!uid) throw new Error('Not signed in.');
 
   let screenshot_path: string | null = null;
+  let screenshotFailed = false;
   if (input.screenshotUri) {
     // Best-effort: a failed screenshot upload must never lose the written report.
     try {
       screenshot_path = await uploadScreenshot(uid, input.screenshotUri);
     } catch {
       screenshot_path = null;
+      screenshotFailed = true;
     }
   }
 
@@ -49,18 +56,21 @@ export async function submitFeedback(input: {
     .select('ref')
     .single();
   if (error) throw error;
-  return { ref: (data as { ref: number }).ref };
+  return { ref: (data as { ref: number }).ref, screenshotFailed };
 }
 
 /** Upload the capture to the private `feedback` bucket under the reporter's folder. */
 async function uploadScreenshot(uid: string, uri: string): Promise<string> {
-  const res = await fetch(uri);
-  const blob = await res.blob();
-  const ext = blob.type.includes('png') ? 'png' : 'jpg';
-  const key = `${uid}/${Date.now()}.${ext}`;
+  // `arrayBuffer()`, NOT `blob()`. On React Native a Blob is an opaque handle backed by
+  // a blob id, which the storage client can't serialise — every native upload silently
+  // produced an empty object. Same approach as the avatar upload in app/profile/edit.tsx.
+  const bytes = await (await fetch(uri)).arrayBuffer();
+  if (bytes.byteLength === 0) throw new Error('Screenshot was empty.');
+  const png = uri.startsWith('data:image/png') || uri.toLowerCase().endsWith('.png');
+  const key = `${uid}/${Date.now()}.${png ? 'png' : 'jpg'}`;
   const { error } = await supabase.storage
     .from('feedback')
-    .upload(key, blob, { contentType: blob.type || 'image/jpeg', upsert: false });
+    .upload(key, bytes, { contentType: png ? 'image/png' : 'image/jpeg', upsert: false });
   if (error) throw error;
   return key;
 }

@@ -29,6 +29,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CommentComposer } from '@/components/comments/comment-composer';
 import { CommentItem } from '@/components/comments/comment-item';
+import { ReportFab } from '@/components/report-issue';
 import { ThemedText } from '@/components/themed-text';
 import { ActionMenu, type ActionOption } from '@/components/ui/action-menu';
 import { FormMessage } from '@/components/ui/form-message';
@@ -321,6 +322,8 @@ export function CommentSheet({
       />
         </View>
       </GestureHandlerRootView>
+      {/* A <Modal> is its own native window, so the app-wide button can't reach here. */}
+      <ReportFab />
     </Modal>
   );
 }

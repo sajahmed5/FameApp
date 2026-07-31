@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
+import { ReportFab } from '@/components/report-issue';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import {
@@ -171,6 +172,8 @@ export function CollectionPicker({
           </ScrollView>
         )}
       </View>
+      {/* A <Modal> is its own native window, so the app-wide button can't reach here. */}
+      <ReportFab />
     </Modal>
   );
 }

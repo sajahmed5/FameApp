@@ -1,9 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { usePathname } from 'expo-router';
-import { useCallback, useRef, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -12,8 +22,10 @@ import {
   StyleSheet,
   TextInput,
   View,
+  type StyleProp,
+  type ViewStyle,
 } from 'react-native';
-import { captureRef } from 'react-native-view-shot';
+import { captureRef, captureScreen } from 'react-native-view-shot';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -29,22 +41,82 @@ const KINDS: { key: FeedbackKind; label: string; icon: keyof typeof Ionicons.gly
   { key: 'other', label: 'Something else', icon: 'chatbox-ellipses-outline' },
 ];
 
+const ReportIssueContext = createContext<{ open: () => void } | null>(null);
+
+/**
+ * Opens the report sheet from anywhere. Needed because a react-native `<Modal>` renders
+ * in its own native window, so the provider's floating button can never paint over one —
+ * modal-based sheets have to mount their own {@link ReportFab} (or call this directly).
+ */
+export function useReportIssue() {
+  const ctx = useContext(ReportIssueContext);
+  if (!ctx) throw new Error('useReportIssue must be used inside a ReportIssueProvider');
+  return ctx;
+}
+
+/** Tracks the on-screen keyboard so the button can sit above it rather than behind it. */
+function useKeyboardHeight() {
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    // `will*` on iOS keeps the button in step with the keyboard's animation.
+    const show = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => setHeight(e.endCoordinates.height),
+    );
+    const hide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setHeight(0),
+    );
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+  return height;
+}
+
+/**
+ * The floating bug button. The provider mounts one automatically; mount another inside
+ * any `<Modal>` so the affordance stays reachable there too.
+ */
+export function ReportFab({ style }: { style?: StyleProp<ViewStyle> }) {
+  const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+  const { open } = useReportIssue();
+  const keyboard = useKeyboardHeight();
+
+  // Reports are attributed, and the sheet needs an account.
+  if (!user) return null;
+
+  return (
+    <Pressable
+      onPress={open}
+      accessibilityRole="button"
+      accessibilityLabel="Report a problem with the app"
+      style={[
+        styles.fab,
+        { bottom: keyboard > 0 ? keyboard + 12 : insets.bottom + TAB_BAR_CLEARANCE + 8 },
+        style,
+      ]}>
+      <Ionicons name="bug" size={16} color="#fff" />
+    </Pressable>
+  );
+}
+
 /**
  * App-wide "report an issue" affordance.
  *
- * Wraps the whole app so the screen can be captured: `children` sit inside a
- * capture target, while the floating button and the report sheet render OUTSIDE it.
- * That ordering matters twice over —
- *   1. the screenshot is taken the instant the button is pressed, BEFORE the sheet
- *      opens, so it shows the problem rather than the report form;
- *   2. the button itself is outside the capture target, so it doesn't appear in the
- *      shot either.
+ * The screenshot is taken the instant the button is pressed, BEFORE the sheet opens, so
+ * it shows the problem rather than the report form. On native it uses `captureScreen`
+ * rather than `captureRef` so that content in a react-native `<Modal>` — which lives in
+ * a separate native window, outside our React tree — is actually in the shot. The
+ * trade-off is that the bug button itself appears in the corner of the capture; the web
+ * fallback still uses `captureRef`, since `captureScreen` has no web implementation.
  */
 export function ReportIssueProvider({ children }: { children: ReactNode }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
-  const { user } = useAuth();
 
   const captureTarget = useRef<View>(null);
   const [open, setOpen] = useState(false);
@@ -54,18 +126,19 @@ export function ReportIssueProvider({ children }: { children: ReactNode }) {
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [sentRef, setSentRef] = useState<number | null>(null);
+  const [shotFailed, setShotFailed] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const openSheet = useCallback(async () => {
     // Capture FIRST, then open — otherwise every screenshot would just be the sheet.
     let uri: string | null = null;
     try {
-      if (captureTarget.current) {
-        uri = await captureRef(captureTarget.current, {
-          format: 'jpg',
-          quality: 0.7,
-          result: Platform.OS === 'web' ? 'data-uri' : 'tmpfile',
-        });
+      if (Platform.OS === 'web') {
+        uri = captureTarget.current
+          ? await captureRef(captureTarget.current, { format: 'jpg', quality: 0.7, result: 'data-uri' })
+          : null;
+      } else {
+        uri = await captureScreen({ format: 'jpg', quality: 0.7, result: 'tmpfile' });
       }
     } catch {
       uri = null; // capture is a nicety, never a blocker
@@ -81,6 +154,7 @@ export function ReportIssueProvider({ children }: { children: ReactNode }) {
     setMessage('');
     setKind('bug');
     setSentRef(null);
+    setShotFailed(false);
     setError(null);
   }, []);
 
@@ -89,12 +163,13 @@ export function ReportIssueProvider({ children }: { children: ReactNode }) {
     setSending(true);
     setError(null);
     try {
-      const { ref } = await submitFeedback({
+      const { ref, screenshotFailed } = await submitFeedback({
         kind,
         message,
         route: pathname,
         screenshotUri: includeShot ? shot : null,
       });
+      setShotFailed(screenshotFailed);
       setSentRef(ref);
     } catch {
       setError('Could not send that report. Please try again.');
@@ -103,25 +178,19 @@ export function ReportIssueProvider({ children }: { children: ReactNode }) {
     }
   }, [message, sending, kind, pathname, includeShot, shot]);
 
+  const ctx = useMemo(() => ({ open: openSheet }), [openSheet]);
+
   return (
-    <View style={styles.fill}>
-      {/* Everything the screenshot should contain. */}
-      <View ref={captureTarget} collapsable={false} style={styles.fill}>
-        {children}
-      </View>
+    <ReportIssueContext.Provider value={ctx}>
+      <View style={styles.fill}>
+        {/* Capture target for the web fallback; native uses captureScreen. */}
+        <View ref={captureTarget} collapsable={false} style={styles.fill}>
+          {children}
+        </View>
 
-      {/* Signed-in only: reports are attributed, and the sheet needs an account. */}
-      {user ? (
-        <Pressable
-          onPress={openSheet}
-          accessibilityRole="button"
-          accessibilityLabel="Report a problem with the app"
-          style={[styles.fab, { bottom: insets.bottom + TAB_BAR_CLEARANCE + 8 }]}>
-          <Ionicons name="bug" size={16} color="#fff" />
-        </Pressable>
-      ) : null}
+        <ReportFab />
 
-      <Modal visible={open} transparent animationType="slide" onRequestClose={close}>
+        <Modal visible={open} transparent animationType="slide" onRequestClose={close}>
         <Pressable style={styles.backdrop} onPress={close} accessibilityLabel="Close" />
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ThemedView style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
@@ -133,6 +202,11 @@ export function ReportIssueProvider({ children }: { children: ReactNode }) {
                 <ThemedText type="small" themeColor="textSecondary" style={styles.center}>
                   Thanks — quote #{sentRef} if you want to talk about this one.
                 </ThemedText>
+                {shotFailed ? (
+                  <ThemedText type="small" style={[styles.center, { color: theme.danger }]}>
+                    The screenshot couldn’t be uploaded, so this report went without one.
+                  </ThemedText>
+                ) : null}
                 <Pressable onPress={close} style={[styles.primary, { backgroundColor: BRAND.accent }]}>
                   <ThemedText type="smallBold" style={{ color: '#fff' }}>Done</ThemedText>
                 </Pressable>
@@ -212,9 +286,10 @@ export function ReportIssueProvider({ children }: { children: ReactNode }) {
               </ScrollView>
             )}
           </ThemedView>
-        </KeyboardAvoidingView>
-      </Modal>
-    </View>
+          </KeyboardAvoidingView>
+        </Modal>
+      </View>
+    </ReportIssueContext.Provider>
   );
 }
 

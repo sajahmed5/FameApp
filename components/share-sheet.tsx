@@ -25,6 +25,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { CollectionPicker } from '@/components/collection-picker';
+import { ReportFab } from '@/components/report-issue';
 import { ActionMenu } from '@/components/ui/action-menu';
 import { useTheme } from '@/hooks/use-theme';
 import { trackFirst } from '@/lib/analytics';
@@ -270,6 +271,8 @@ export function ShareSheet({
 
         <CollectionPicker postId={post.id} visible={saveOpen} onClose={() => setSaveOpen(false)} onChange={setSaved} />
       </GestureHandlerRootView>
+      {/* A <Modal> is its own native window, so the app-wide button can't reach here. */}
+      <ReportFab />
     </Modal>
   );
 }

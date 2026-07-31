@@ -181,6 +181,10 @@ export function MediaEditor({
   const drawGesture = useMemo(
     () =>
       Gesture.Pan()
+        // With Reanimated installed these callbacks are workletized and run on the UI
+        // thread, where calling setState directly crashes. Drawing needs React state for
+        // the live path, so keep the whole gesture on the JS thread.
+        .runOnJS(true)
         .maxPointers(1)
         .onBegin((e) => setLivePoints([{ x: e.x, y: e.y }]))
         .onUpdate((e) => setLivePoints((prev) => [...prev, { x: e.x, y: e.y }]))
@@ -270,6 +274,12 @@ export function MediaEditor({
               </Group>
             </Canvas>
 
+            {/* Tap empty canvas to deselect. Must sit UNDER the overlays — as a sibling
+                painted after them it would swallow their pan/pinch/rotate and badges. */}
+            {tool !== 'draw' && selected ? (
+              <Pressable style={StyleSheet.absoluteFill} onPress={() => setSelected(null)} />
+            ) : null}
+
             {/* Text / sticker overlays */}
             {doc.layers.map((l) => (
               <EditableOverlay
@@ -293,10 +303,7 @@ export function MediaEditor({
               <GestureDetector gesture={drawGesture}>
                 <View style={StyleSheet.absoluteFill} />
               </GestureDetector>
-            ) : (
-              // tap empty space to deselect
-              <Pressable style={StyleSheet.absoluteFill} onPress={() => setSelected(null)} pointerEvents={selected ? 'auto' : 'box-none'} />
-            )}
+            ) : null}
           </View>
         )}
       </View>

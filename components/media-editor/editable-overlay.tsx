@@ -83,7 +83,16 @@ export function EditableOverlay({
 
   const tap = Gesture.Tap().onEnd(() => runOnJS(onSelect)(layer.id));
 
-  const gesture = Gesture.Simultaneous(pan, pinch, rotate, tap);
+  // Double-tap re-opens the text editor. The corner pencil badge does the same job, but
+  // it's a 24pt target that gets clipped when the layer sits near the canvas edge.
+  const doubleTap = Gesture.Tap()
+    .numberOfTaps(2)
+    .onEnd(() => {
+      runOnJS(onSelect)(layer.id);
+      if (layer.kind === 'text') runOnJS(onEditText)(layer.id);
+    });
+
+  const gesture = Gesture.Simultaneous(pan, pinch, rotate, Gesture.Exclusive(doubleTap, tap));
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [

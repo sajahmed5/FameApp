@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ReportFab } from '@/components/report-issue';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/use-theme';
@@ -130,6 +131,8 @@ export function LocationPicker({
           />
         )}
       </ThemedView>
+      {/* A <Modal> is its own native window, so the app-wide button can't reach here. */}
+      <ReportFab />
     </Modal>
   );
 }

@@ -7,8 +7,9 @@ import {
   Path as SkiaPath,
   Skia,
   useImage,
+  type SkImage,
 } from '@shopify/react-native-skia';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -45,6 +46,42 @@ type Tool = 'filter' | 'text' | 'sticker' | 'draw';
 
 /** Filter preview tile size; the bordered swatch adds its 2pt border either side. */
 const SWATCH = 44;
+
+/**
+ * The filter row, memoised. Each swatch is a live Skia canvas, so without this every
+ * unrelated state change in the editor — selecting a layer, dragging one, adding a
+ * sticker — re-rendered all of them. Only the loaded image and the active filter can
+ * change what these look like.
+ */
+const FilterSwatches = memo(function FilterSwatches({
+  image,
+  activeId,
+  onPick,
+}: {
+  image: SkImage | null;
+  activeId: string;
+  onPick: (id: string) => void;
+}) {
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rowPad}>
+      {FILTERS.map((f) => (
+        <Pressable key={f.id} style={styles.filterChip} onPress={() => onPick(f.id)}>
+          {/* Was an empty bordered box, which told you nothing about the filter. */}
+          <View style={[styles.filterSwatch, { borderColor: activeId === f.id ? BRAND.accent : '#333' }]}>
+            {image ? (
+              <Canvas style={styles.filterSwatchCanvas}>
+                <SkiaImage image={image} x={0} y={0} width={SWATCH} height={SWATCH} fit="cover">
+                  {f.matrix ? <ColorMatrix matrix={f.matrix} /> : null}
+                </SkiaImage>
+              </Canvas>
+            ) : null}
+          </View>
+          <Text style={[styles.chipLabel, activeId === f.id && styles.chipActive]}>{f.label}</Text>
+        </Pressable>
+      ))}
+    </ScrollView>
+  );
+});
 
 /** Build a Skia path from captured points (simple polyline; round-capped when stroked). */
 function toPath(points: { x: number; y: number }[]) {
@@ -316,35 +353,7 @@ export function MediaEditor({
       {!exporting ? (
         <View style={[styles.panel, { paddingBottom: insets.bottom + 6 }]}>
           {tool === 'filter' ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rowPad}>
-              {FILTERS.map((f) => (
-                <Pressable key={f.id} style={styles.filterChip} onPress={() => setFilter(f.id)}>
-                  {/* Was an empty bordered box, which told you nothing. Each swatch is
-                      now the actual photo under that filter — same Skia paint as the
-                      main canvas, just small. */}
-                  <View
-                    style={[
-                      styles.filterSwatch,
-                      { borderColor: doc.filterId === f.id ? BRAND.accent : '#333' },
-                    ]}>
-                    {image ? (
-                      <Canvas style={styles.filterSwatchCanvas}>
-                        <SkiaImage
-                          image={image}
-                          x={0}
-                          y={0}
-                          width={SWATCH}
-                          height={SWATCH}
-                          fit="cover">
-                          {f.matrix ? <ColorMatrix matrix={f.matrix} /> : null}
-                        </SkiaImage>
-                      </Canvas>
-                    ) : null}
-                  </View>
-                  <Text style={[styles.chipLabel, doc.filterId === f.id && styles.chipActive]}>{f.label}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
+            <FilterSwatches image={image} activeId={doc.filterId} onPick={setFilter} />
           ) : null}
 
           {tool === 'sticker' ? (

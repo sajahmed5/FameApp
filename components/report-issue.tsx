@@ -42,7 +42,9 @@ const KINDS: { key: FeedbackKind; label: string; icon: keyof typeof Ionicons.gly
   { key: 'other', label: 'Something else', icon: 'chatbox-ellipses-outline' },
 ];
 
-const ReportIssueContext = createContext<{ open: () => void } | null>(null);
+const ReportIssueContext = createContext<{
+  open: (beforeOpen?: () => void) => void;
+} | null>(null);
 
 /**
  * Opens the report sheet from anywhere. Needed because a react-native `<Modal>` renders
@@ -80,7 +82,14 @@ function useKeyboardHeight() {
  * The floating bug button. The provider mounts one automatically; mount another inside
  * any `<Modal>` so the affordance stays reachable there too.
  */
-export function ReportFab({ style }: { style?: StyleProp<ViewStyle> }) {
+export function ReportFab({
+  style,
+  onBeforeOpen,
+}: {
+  style?: StyleProp<ViewStyle>;
+  /** Mounted inside a <Modal>? Pass its dismiss — see the note in openSheet. */
+  onBeforeOpen?: () => void;
+}) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { open } = useReportIssue();
@@ -89,16 +98,20 @@ export function ReportFab({ style }: { style?: StyleProp<ViewStyle> }) {
   // Reports are attributed, and the sheet needs an account.
   if (!user) return null;
 
+  // With the keyboard up, the bottom-right corner belongs to whatever composer
+  // raised it — anchoring there put this button straight on top of the send arrow.
+  // Top-right is the one spot no composer ever occupies.
+  const anchor: ViewStyle =
+    keyboard > 0
+      ? { top: insets.top + 8, bottom: undefined }
+      : { bottom: insets.bottom + TAB_BAR_CLEARANCE + 8 };
+
   return (
     <Pressable
-      onPress={open}
+      onPress={() => open(onBeforeOpen)}
       accessibilityRole="button"
       accessibilityLabel="Report a problem with the app"
-      style={[
-        styles.fab,
-        { bottom: keyboard > 0 ? keyboard + 12 : insets.bottom + TAB_BAR_CLEARANCE + 8 },
-        style,
-      ]}>
+      style={[styles.fab, anchor, style]}>
       <Ionicons name="bug" size={16} color="#fff" />
     </Pressable>
   );
@@ -130,7 +143,7 @@ export function ReportIssueProvider({ children }: { children: ReactNode }) {
   const [failedCount, setFailedCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const openSheet = useCallback(async () => {
+  const openSheet = useCallback(async (beforeOpen?: () => void) => {
     // Capture FIRST, then open — otherwise every screenshot would just be the sheet.
     let uri: string | null = null;
     try {
@@ -145,6 +158,17 @@ export function ReportIssueProvider({ children }: { children: ReactNode }) {
       uri = null; // capture is a nicety, never a blocker
     }
     setShots(uri ? [uri] : []);
+
+    // iOS presents a <Modal> from the root view controller and refuses to present a
+    // second one while the first is up — it fails SILENTLY, leaving this sheet "open"
+    // but invisible and eating every touch. So a host modal dismisses itself first
+    // (after the capture, so the shot still shows the screen being reported), and we
+    // wait for its dismissal animation before presenting.
+    if (beforeOpen) {
+      beforeOpen();
+      setTimeout(() => setOpen(true), 350);
+      return;
+    }
     setOpen(true);
   }, []);
 

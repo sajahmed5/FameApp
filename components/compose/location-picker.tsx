@@ -131,8 +131,8 @@ export function LocationPicker({
           />
         )}
       </ThemedView>
-      {/* A <Modal> is its own native window, so the app-wide button can't reach here. */}
-      <ReportFab />
+      {/* Closes this sheet first: iOS won't present a modal over a presented one. */}
+      <ReportFab onBeforeOpen={onClose} />
     </Modal>
   );
 }

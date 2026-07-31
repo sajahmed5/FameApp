@@ -322,8 +322,10 @@ export function CommentSheet({
       />
         </View>
       </GestureHandlerRootView>
-      {/* A <Modal> is its own native window, so the app-wide button can't reach here. */}
-      <ReportFab />
+      {/* A <Modal> is its own native window, so the app-wide button can't reach here.
+          It has to close this sheet before the report sheet can present — iOS won't
+          present a second modal over one that's already up. */}
+      <ReportFab onBeforeOpen={dismiss} />
     </Modal>
   );
 }

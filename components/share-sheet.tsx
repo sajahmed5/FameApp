@@ -271,8 +271,8 @@ export function ShareSheet({
 
         <CollectionPicker postId={post.id} visible={saveOpen} onClose={() => setSaveOpen(false)} onChange={setSaved} />
       </GestureHandlerRootView>
-      {/* A <Modal> is its own native window, so the app-wide button can't reach here. */}
-      <ReportFab />
+      {/* Closes this sheet first: iOS won't present a modal over a presented one. */}
+      <ReportFab onBeforeOpen={onClose} />
     </Modal>
   );
 }

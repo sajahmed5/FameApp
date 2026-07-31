@@ -79,12 +79,25 @@ async function carouselCounts(ids: string[]): Promise<Map<string, number>> {
 export async function followUser(target: ProfileOverview): Promise<'pending' | 'accepted'> {
   const { data: u } = await supabase.auth.getUser();
   const uid = u.user!.id;
-  const status = target.is_private ? 'pending' : 'accepted';
-  const { error } = await supabase
+  // Always request; a DB trigger upgrades it to 'accepted' only when the target is
+  // public AND has follower-approval turned off. The client never decides this.
+  const { data, error } = await supabase
     .from('follows')
-    .insert({ follower_id: uid, followee_id: target.id, status });
+    .insert({ follower_id: uid, followee_id: target.id, status: 'pending' })
+    .select('status')
+    .single();
   if (error && error.code !== '23505') throw error;
-  return status;
+  return ((data as { status?: string } | null)?.status as 'pending' | 'accepted') ?? 'pending';
+}
+
+/** Require new followers to be approved, even when the profile is public. */
+export async function setFollowApproval(require: boolean): Promise<void> {
+  const { data: u } = await supabase.auth.getUser();
+  const { error } = await supabase
+    .from('profiles')
+    .update({ require_follow_approval: require })
+    .eq('id', u.user!.id);
+  if (error) throw error;
 }
 
 export async function unfollowUser(targetId: string): Promise<void> {

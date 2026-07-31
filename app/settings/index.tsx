@@ -26,6 +26,7 @@ import {
   getNotificationPrefs,
   requestDataExport,
   setAllPostsVisibility,
+  setFollowApproval,
   setNotificationPrefs,
   setPrivacy,
   setSearchRadius,
@@ -41,6 +42,7 @@ export default function SettingsScreen() {
 
   const [isPrivate, setIsPrivate] = useState(profile?.is_private ?? false);
   const [privacyPromptOpen, setPrivacyPromptOpen] = useState(false);
+  const [approveFollowers, setApproveFollowers] = useState(profile?.require_follow_approval ?? true);
   const [radius, setRadius] = useState(profile?.search_radius_miles ?? 5);
   const [prefs, setPrefs] = useState<NotificationPrefs | null>(null);
   const [shareUsage, setShareUsage] = useState(!analytics.isOptedOut());
@@ -70,6 +72,15 @@ export default function SettingsScreen() {
       if (v) setPrivacyPromptOpen(true);
     } catch {
       setIsPrivate(!v);
+    }
+  }
+  async function toggleFollowApproval(v: boolean) {
+    setApproveFollowers(v);
+    try {
+      await setFollowApproval(v);
+      reload();
+    } catch {
+      setApproveFollowers(!v);
     }
   }
   async function changeRadius(m: number) {
@@ -141,6 +152,12 @@ export default function SettingsScreen() {
             sublabel="Only accepted followers can see your posts."
             value={isPrivate}
             onValueChange={togglePrivacy}
+          />
+          <ToggleRow
+            label="Approve new followers"
+            sublabel="New followers need your approval, even on a public profile. Private posts stay limited to people you've approved."
+            value={approveFollowers}
+            onValueChange={toggleFollowApproval}
           />
           <ToggleRow
             label="Share anonymous usage data"

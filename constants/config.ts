@@ -22,7 +22,7 @@ export const BRAND = {
 export const STORY_RING_SEEN = '#8A4A28';
 
 /** Floating (Instagram-style) bottom tab bar geometry. */
-export const TAB_BAR = { height: 60, side: 14, bottom: 12 } as const;
+export const TAB_BAR = { height: 60, side: 14, bottom: 4 } as const;
 /**
  * Space the floating tab bar occupies *above* the screen's bottom safe-area inset.
  * Add `insets.bottom + TAB_BAR_CLEARANCE` to a scroll view's paddingBottom (or an

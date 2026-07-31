@@ -29,6 +29,8 @@ export type Profile = {
   avatar_url: string | null;
   date_of_birth: string; // ISO `YYYY-MM-DD`
   is_private: boolean;
+  /** New followers need approval even on a public profile (defaults to true). */
+  require_follow_approval: boolean;
   age_band: AgeBand;
   points_balance: number;
   points_lifetime: number;

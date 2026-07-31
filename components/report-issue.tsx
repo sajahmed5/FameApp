@@ -236,6 +236,16 @@ export function ReportIssueProvider({ children }: { children: ReactNode }) {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ThemedView style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
             <View style={styles.handle} />
+            {/* Tapping the backdrop closes too, but that isn't discoverable when the
+                sheet is tall enough to leave barely any backdrop showing. */}
+            <Pressable
+              onPress={close}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+              style={[styles.sheetClose, { backgroundColor: theme.backgroundSelected }]}>
+              <Ionicons name="close" size={17} color={theme.text} />
+            </Pressable>
             {sentRef ? (
               <View style={styles.done}>
                 <Ionicons name="checkmark-circle" size={44} color={BRAND.accent} />
@@ -371,6 +381,17 @@ const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' },
   sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, gap: 4 },
   handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(128,128,128,0.4)', marginBottom: 10 },
+  sheetClose: {
+    position: 'absolute',
+    top: 10,
+    right: 14,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 5,
+  },
   kinds: { gap: 8, marginBottom: 12 },
   kind: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
   input: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, padding: 12, minHeight: 96, fontSize: 15, textAlignVertical: 'top' },

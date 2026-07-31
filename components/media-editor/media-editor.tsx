@@ -218,10 +218,6 @@ export function MediaEditor({
 
   return (
     <View style={styles.root}>
-      {/* This screen is a fullScreenModal, which iOS presents in its own container —
-          the app-wide button can't paint over it, so mount one here. */}
-      <ReportFab style={styles.reportFab} />
-
       {/* Top bar */}
       <View style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
         <Pressable onPress={onCancel} hitSlop={10} disabled={exporting}>
@@ -447,6 +443,12 @@ export function MediaEditor({
           </View>
         </View>
       ) : null}
+
+      {/* Last child on purpose. This screen is a fullScreenModal, which iOS presents in
+          its own container, so the app-wide button can't reach it — and mounted FIRST
+          it rendered but wasn't tappable, because the absolutely-positioned top bar is
+          painted after it and took the touch. */}
+      {!textDraft && !exporting ? <ReportFab style={styles.reportFab} /> : null}
     </View>
   );
 }
@@ -479,8 +481,8 @@ const styles = StyleSheet.create({
   canvasArea: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   panel: { backgroundColor: '#111' },
   rowPad: { paddingHorizontal: 12, paddingVertical: 10, gap: 10, flexDirection: 'row', alignItems: 'center' },
-  // Above the tool panel, clear of the Done button and the swatch row.
-  reportFab: { bottom: undefined, top: 96, zIndex: 60 },
+  // Below the top bar's controls, clear of Done and of the filter swatch row.
+  reportFab: { bottom: undefined, top: 104, zIndex: 60 },
   filterChip: { alignItems: 'center', gap: 4, marginRight: 6 },
   filterSwatch: {
     width: SWATCH + 4,

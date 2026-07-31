@@ -1,6 +1,8 @@
 import * as Application from 'expo-application';
+import { File } from 'expo-file-system';
 import { Platform } from 'react-native';
 
+import { Sentry } from '@/lib/sentry';
 import { supabase } from '@/lib/supabase';
 
 export type FeedbackKind = 'bug' | 'idea' | 'other';
@@ -40,7 +42,16 @@ export async function submitFeedback(input: {
     uris.map((uri) =>
       uploadScreenshot(uid, uri).then(
         (key) => key,
-        () => null,
+        (e: unknown) => {
+          // Instrumented deliberately: this failed twice with no way to see why, and
+          // the reporter only ever saw "couldn't be uploaded". Scheme only — the rest
+          // of the path contains the reporter's user id.
+          Sentry.captureException(e instanceof Error ? e : new Error(String(e)), {
+            tags: { area: 'feedback-attachment' },
+            extra: { scheme: uri.split(':')[0]?.slice(0, 12) ?? 'none' },
+          });
+          return null;
+        },
       ),
     ),
   );
@@ -66,12 +77,25 @@ export async function submitFeedback(input: {
   return { ref: (data as { ref: number }).ref, failedAttachments };
 }
 
+/**
+ * Read a local capture or picked photo into bytes.
+ *
+ * `fetch()` is only right for the web's data: URIs. On native, captureScreen hands back
+ * a filesystem path that may have no URI scheme at all, and fetch() rejects that
+ * outright — which is why every native attachment failed even after the Blob fix.
+ * expo-file-system reads the file directly and doesn't care about the scheme.
+ */
+async function readAsArrayBuffer(uri: string): Promise<ArrayBuffer> {
+  if (uri.startsWith('data:')) return (await fetch(uri)).arrayBuffer();
+  const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(uri) ? uri : `file://${uri}`;
+  return new File(withScheme).arrayBuffer();
+}
+
 /** Upload the capture to the private `feedback` bucket under the reporter's folder. */
 async function uploadScreenshot(uid: string, uri: string): Promise<string> {
   // `arrayBuffer()`, NOT `blob()`. On React Native a Blob is an opaque handle backed by
-  // a blob id, which the storage client can't serialise — every native upload silently
-  // produced an empty object. Same approach as the avatar upload in app/profile/edit.tsx.
-  const bytes = await (await fetch(uri)).arrayBuffer();
+  // a blob id, which the storage client can't serialise — a blob upload lands empty.
+  const bytes = await readAsArrayBuffer(uri);
   if (bytes.byteLength === 0) throw new Error('Screenshot was empty.');
   const png = uri.startsWith('data:image/png') || uri.toLowerCase().endsWith('.png');
   const key = `${uid}/${Date.now()}.${png ? 'png' : 'jpg'}`;

@@ -8,6 +8,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, useWindowD
 import { CollectionPicker } from '@/components/collection-picker';
 import { CommentSheet } from '@/components/comments/comment-sheet';
 import { MentionText } from '@/components/mention-text';
+import { PostAnalyticsCard } from '@/components/profile/post-analytics-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ActionMenu } from '@/components/ui/action-menu';
@@ -19,7 +20,7 @@ import { getBookmarkState } from '@/lib/bookmarks';
 import { confirm } from '@/lib/confirm';
 import { recordSwipe, undoSwipe } from '@/lib/deck';
 import { formatCount } from '@/lib/format';
-import { deletePost, getPostDetail, getPostExtras, POST_REPORT_REASONS, reportPost, type PostDetail, type PostMediaItem } from '@/lib/posts';
+import { deletePost, getMyPosts, getPostDetail, getPostExtras, POST_REPORT_REASONS, reportPost, type PostDetail, type PostMediaItem } from '@/lib/posts';
 
 export default function PostViewScreen() {
   const theme = useTheme();
@@ -42,6 +43,31 @@ export default function PostViewScreen() {
   const [myDir, setMyDir] = useState<'left' | 'right' | null>(null);
   const [likeCount, setLikeCount] = useState(0);
   const [skipCount, setSkipCount] = useState(0);
+  /** Your own post ids in grid order, so you can step between them from here (#18). */
+  const [siblings, setSiblings] = useState<string[]>([]);
+
+  const isOwner = !!post && post.user_id === user?.id;
+  useEffect(() => {
+    if (!isOwner) return;
+    let alive = true;
+    void getMyPosts()
+      .then((rows) => alive && setSiblings(rows.map((r) => r.id)))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [isOwner]);
+
+  const siblingIndex = id ? siblings.indexOf(id) : -1;
+  const goToSibling = useCallback(
+    (delta: number) => {
+      const next = siblings[siblingIndex + delta];
+      // replace(), not push() — stepping through 20 posts shouldn't build a 20-deep
+      // back stack that the user then has to unwind.
+      if (next) router.replace({ pathname: '/post/[id]', params: { id: next } });
+    },
+    [siblings, siblingIndex, router],
+  );
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -265,6 +291,33 @@ export default function PostViewScreen() {
               : 'Add a comment'}
           </ThemedText>
         </Pressable>
+
+        {/* Your own post: the reach/like/skip breakdown was only reachable from the
+            edit screen, which is the last place you'd look for it (#18). */}
+        {isOwnPost ? <PostAnalyticsCard postId={post.id} /> : null}
+
+        {/* Step through your own posts without going back to the grid (#18). */}
+        {isOwnPost && siblings.length > 1 ? (
+          <View style={styles.siblingNav}>
+            <Button
+              title="Previous"
+              variant="secondary"
+              disabled={siblingIndex <= 0}
+              onPress={() => goToSibling(-1)}
+              style={styles.siblingBtn}
+            />
+            <ThemedText type="small" themeColor="textSecondary">
+              {siblingIndex + 1} of {siblings.length}
+            </ThemedText>
+            <Button
+              title="Next"
+              variant="secondary"
+              disabled={siblingIndex < 0 || siblingIndex >= siblings.length - 1}
+              onPress={() => goToSibling(1)}
+              style={styles.siblingBtn}
+            />
+          </View>
+        ) : null}
       </ScrollView>
 
       {commentsOpen ? (
@@ -356,6 +409,14 @@ const styles = StyleSheet.create({
   caption: {},
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tag: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
+  siblingNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginTop: 14,
+  },
+  siblingBtn: { minWidth: 108 },
   commentsBtn: {
     flexDirection: 'row',
     alignItems: 'center',

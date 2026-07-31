@@ -34,6 +34,17 @@ export const Colors = {
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
+/**
+ * Fill for the floating tab bar — `backgroundElement` with alpha, so the feed shows
+ * through as it scrolls under the pill. Deliberately high (0.82): the bar sits over
+ * photos, and anything more transparent makes the icons hard to read. Kept out of
+ * `Colors` because it isn't a `ThemeColor` — nothing else should paint with it.
+ */
+export const TAB_BAR_FILL = {
+  light: 'rgba(240,240,243,0.82)',
+  dark: 'rgba(33,34,37,0.82)',
+} as const;
+
 export const Fonts = Platform.select({
   ios: {
     /** iOS `UIFontDescriptorSystemDesignDefault` */

@@ -9,11 +9,14 @@ import { HeaderSearchButton } from '@/components/header-search-button';
 import { NotificationBellButton } from '@/components/notification-bell-button';
 import { SettingsGearButton } from '@/components/settings-gear-button';
 import { BRAND, TAB_BAR } from '@/constants/config';
+import { TAB_BAR_FILL } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { useInboxBadge, useInboxBadgeUpdater } from '@/lib/inbox-badge';
 
 export default function TabsLayout() {
   const theme = useTheme();
+  const scheme = useColorScheme();
   const insets = useSafeAreaInsets();
   useInboxBadgeUpdater();
   const inboxBadge = useInboxBadge();
@@ -37,7 +40,7 @@ export default function TabsLayout() {
           bottom: insets.bottom + TAB_BAR.bottom,
           height: TAB_BAR.height,
           borderRadius: TAB_BAR.height / 2,
-          backgroundColor: theme.backgroundElement,
+          backgroundColor: TAB_BAR_FILL[scheme === 'dark' ? 'dark' : 'light'],
           borderTopWidth: 0,
           paddingHorizontal: 6,
           ...Platform.select({

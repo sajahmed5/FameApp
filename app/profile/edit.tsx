@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -20,7 +20,8 @@ import { FormMessage } from '@/components/ui/form-message';
 import { TextField } from '@/components/ui/text-field';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
-import { updateOwnProfile } from '@/lib/profile';
+import { changeHandle, isHandleAvailable, updateOwnProfile } from '@/lib/profile';
+import { validateHandleFormat } from '@/lib/validation';
 import { supabase } from '@/lib/supabase';
 
 const BIO_MAX = 160;
@@ -37,6 +38,35 @@ export default function EditProfileScreen() {
   const [avatarChanged, setAvatarChanged] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const currentHandle = profile?.handle ?? '';
+  const [handle, setHandle] = useState(currentHandle);
+  const [availability, setAvailability] = useState<
+    'checking' | 'available' | 'taken' | 'error'
+  >('checking');
+  const checkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => clearTimeout(checkTimer.current ?? undefined), []);
+
+  const handleChanged = handle !== currentHandle;
+  const formatError = handleChanged ? validateHandleFormat(handle) : null;
+  // Derived, not stored: only the async availability lookup needs state.
+  const handleState = !handleChanged ? 'unchanged' : formatError ? 'invalid' : availability;
+
+  // Debounced in the change handler rather than an effect. The RPC also treats a
+  // handle released by someone else as taken, so what's offered here is exactly
+  // what change_handle() will accept.
+  function onHandleChange(text: string) {
+    const next = text.trim().toLowerCase();
+    setHandle(next);
+    clearTimeout(checkTimer.current ?? undefined);
+    if (next === currentHandle || validateHandleFormat(next)) return;
+    setAvailability('checking');
+    checkTimer.current = setTimeout(() => {
+      isHandleAvailable(next)
+        .then((ok) => setAvailability(ok ? 'available' : 'taken'))
+        .catch(() => setAvailability('error'));
+    }, 400);
+  }
 
   async function pickAvatar() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -74,9 +104,20 @@ export default function EditProfileScreen() {
       setError('Display name is required.');
       return;
     }
+    if (handleChanged && handleState !== 'available') {
+      setError(
+        handleState === 'checking'
+          ? 'Still checking that handle — try again in a moment.'
+          : 'Pick an available handle, or change it back.',
+      );
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
+      // Handle first: it's the one that can be rejected server-side (cooldown, or a
+      // reservation), and failing it shouldn't leave the name/bio half-saved.
+      if (handleChanged) await changeHandle(handle);
       const patch: { display_name: string; bio: string; avatar_url?: string } = {
         display_name: name,
         bio: bio.trim(),
@@ -146,9 +187,40 @@ export default function EditProfileScreen() {
             </ThemedText>
           </View>
 
+          <View>
+            <TextField
+              label="Handle"
+              value={handle}
+              onChangeText={onHandleChange}
+              autoCapitalize="none"
+              autoCorrect={false}
+              maxLength={30}
+              placeholder="yourname"
+            />
+            <ThemedText
+              type="small"
+              themeColor={handleState === 'available' ? 'success' : 'textSecondary'}
+              style={[
+                styles.handleHint,
+                handleState === 'taken' || handleState === 'invalid' ? { color: theme.danger } : null,
+              ]}>
+              {
+                {
+                  unchanged:
+                    'You can change this once every 30 days. Your old handle stays reserved to you, so existing @mentions still reach you.',
+                  invalid: 'Handles are 3–30 characters: lowercase letters, numbers, underscore.',
+                  checking: 'Checking…',
+                  available: `@${handle} is available.`,
+                  taken: `@${handle} is taken.`,
+                  error: 'Could not check that handle. Try again.',
+                }[handleState]
+              }
+            </ThemedText>
+          </View>
+
           <View style={[styles.readonly, { borderColor: theme.border }]}>
             <ThemedText type="small" themeColor="textSecondary">
-              Handle @{profile?.handle} and date of birth can&apos;t be changed.
+              Date of birth can&apos;t be changed.
             </ThemedText>
           </View>
 
@@ -177,5 +249,6 @@ const styles = StyleSheet.create({
   center: { textAlign: 'center' },
   bio: { minHeight: 72, textAlignVertical: 'top' },
   counter: { alignSelf: 'flex-end', marginTop: 4 },
+  handleHint: { marginTop: 6 },
   readonly: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 10, padding: 12 },
 });

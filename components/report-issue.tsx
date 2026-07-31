@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { usePathname } from 'expo-router';
 import {
   createContext,
@@ -122,6 +123,8 @@ export function ReportIssueProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [shot, setShot] = useState<string | null>(null);
   const [includeShot, setIncludeShot] = useState(true);
+  /** True once the attachment is a library photo rather than the auto-capture. */
+  const [picked, setPicked] = useState(false);
   const [kind, setKind] = useState<FeedbackKind>('bug');
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -148,9 +151,20 @@ export function ReportIssueProvider({ children }: { children: ReactNode }) {
     setOpen(true);
   }, []);
 
+  const pickFromLibrary = useCallback(async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) return;
+    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
+    if (res.canceled || !res.assets?.length) return;
+    setShot(res.assets[0].uri);
+    setPicked(true);
+    setIncludeShot(true);
+  }, []);
+
   const close = useCallback(() => {
     setOpen(false);
     setShot(null);
+    setPicked(false);
     setMessage('');
     setKind('bug');
     setSentRef(null);
@@ -261,10 +275,21 @@ export function ReportIssueProvider({ children }: { children: ReactNode }) {
                       size={20}
                       color={includeShot ? BRAND.accent : theme.textSecondary}
                     />
-                    <ThemedText type="small" style={{ flex: 1 }}>Include a screenshot of this screen</ThemedText>
+                    <ThemedText type="small" style={{ flex: 1 }}>
+                      {picked ? 'Include this photo' : 'Include a screenshot of this screen'}
+                    </ThemedText>
                     <Image source={{ uri: shot }} style={[styles.thumb, { borderColor: theme.border }]} contentFit="cover" />
                   </Pressable>
                 ) : null}
+
+                {/* Not every problem is visible on the screen you're on — sometimes the
+                    evidence is a photo you already took (#13). */}
+                <Pressable onPress={pickFromLibrary} style={styles.shotRow} accessibilityRole="button">
+                  <Ionicons name="images-outline" size={20} color={theme.textSecondary} />
+                  <ThemedText type="small" style={{ flex: 1 }}>
+                    {picked ? 'Choose a different photo' : 'Attach a photo from your library instead'}
+                  </ThemedText>
+                </Pressable>
 
                 {error ? (
                   <ThemedText type="small" style={{ color: theme.danger, marginTop: 8 }}>{error}</ThemedText>

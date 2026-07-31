@@ -282,6 +282,25 @@ export async function getBlockedAndMuted(): Promise<BlockedMuted> {
 
 // ---- Edit profile ----------------------------------------------------------
 
+/**
+ * Rename yourself. Goes through the `change_handle` RPC rather than updating the
+ * column directly (that grant is revoked): the RPC enforces the 30-day cooldown and
+ * permanently reserves the old handle, so existing @mentions written as raw text
+ * can't later be pointed at somebody else. Rejects with a message worth showing.
+ */
+export async function changeHandle(next: string): Promise<string> {
+  const { data, error } = await supabase.rpc('change_handle', { _new: next });
+  if (error) throw new Error(error.message || 'Could not change your handle.');
+  return data as string;
+}
+
+/** True when `handle` is free — respects handles reserved by a previous owner. */
+export async function isHandleAvailable(handle: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc('is_handle_available', { _handle: handle });
+  if (error) throw error;
+  return !!data;
+}
+
 export async function updateOwnProfile(patch: {
   display_name?: string;
   bio?: string;

@@ -5,11 +5,14 @@ import { supabase } from '@/lib/supabase';
 
 export type FeedbackKind = 'bug' | 'idea' | 'other';
 
+/** Most reports need one or two images; the cap keeps uploads quick on mobile data. */
+export const MAX_ATTACHMENTS = 4;
+
 export type SubmittedFeedback = {
   ref: number;
-  /** True when a screenshot was requested but couldn't be uploaded — the report still
-   *  saved. Surfaced in the UI so a silent failure can't go unnoticed again. */
-  screenshotFailed: boolean;
+  /** How many attachments couldn't be uploaded — the report still saved. Surfaced in
+   *  the UI so a silent failure can't go unnoticed again. */
+  failedAttachments: number;
 };
 
 /**
@@ -23,24 +26,26 @@ export async function submitFeedback(input: {
   kind: FeedbackKind;
   message: string;
   route?: string | null;
-  /** data: URI or file URI of the screenshot, if the reporter chose to include one. */
-  screenshotUri?: string | null;
+  /** data: / file: URIs of the images to attach, in the order the reporter added them. */
+  screenshotUris?: string[];
 }): Promise<SubmittedFeedback> {
   const { data: u } = await supabase.auth.getUser();
   const uid = u.user?.id;
   if (!uid) throw new Error('Not signed in.');
 
-  let screenshot_path: string | null = null;
-  let screenshotFailed = false;
-  if (input.screenshotUri) {
-    // Best-effort: a failed screenshot upload must never lose the written report.
-    try {
-      screenshot_path = await uploadScreenshot(uid, input.screenshotUri);
-    } catch {
-      screenshot_path = null;
-      screenshotFailed = true;
-    }
-  }
+  const uris = (input.screenshotUris ?? []).slice(0, MAX_ATTACHMENTS);
+  // Uploaded in parallel, but a failure only drops that one image — losing an
+  // attachment must never lose the written report.
+  const settled = await Promise.all(
+    uris.map((uri) =>
+      uploadScreenshot(uid, uri).then(
+        (key) => key,
+        () => null,
+      ),
+    ),
+  );
+  const paths = settled.filter((k): k is string => !!k);
+  const failedAttachments = settled.length - paths.length;
 
   const { data, error } = await supabase
     .from('feedback_reports')
@@ -48,7 +53,9 @@ export async function submitFeedback(input: {
       user_id: uid,
       kind: input.kind,
       message: input.message.trim(),
-      screenshot_path,
+      screenshot_paths: paths,
+      // Mirrors the first attachment so the admin portal keeps working pre-update.
+      screenshot_path: paths[0] ?? null,
       route: input.route ?? null,
       platform: Platform.OS,
       app_version: Application.nativeApplicationVersion ?? null,
@@ -56,7 +63,7 @@ export async function submitFeedback(input: {
     .select('ref')
     .single();
   if (error) throw error;
-  return { ref: (data as { ref: number }).ref, screenshotFailed };
+  return { ref: (data as { ref: number }).ref, failedAttachments };
 }
 
 /** Upload the capture to the private `feedback` bucket under the reporter's folder. */

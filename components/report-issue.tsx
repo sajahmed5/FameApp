@@ -34,7 +34,7 @@ import { ThemedView } from '@/components/themed-view';
 import { BRAND, TAB_BAR_CLEARANCE } from '@/constants/config';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
-import { submitFeedback, type FeedbackKind } from '@/lib/feedback';
+import { MAX_ATTACHMENTS, submitFeedback, type FeedbackKind } from '@/lib/feedback';
 
 const KINDS: { key: FeedbackKind; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { key: 'bug', label: 'Something’s broken', icon: 'bug-outline' },
@@ -121,15 +121,13 @@ export function ReportIssueProvider({ children }: { children: ReactNode }) {
 
   const captureTarget = useRef<View>(null);
   const [open, setOpen] = useState(false);
-  const [shot, setShot] = useState<string | null>(null);
-  const [includeShot, setIncludeShot] = useState(true);
-  /** True once the attachment is a library photo rather than the auto-capture. */
-  const [picked, setPicked] = useState(false);
+  /** Attachments in the order they'll be shown. [0] is the auto-capture when it worked. */
+  const [shots, setShots] = useState<string[]>([]);
   const [kind, setKind] = useState<FeedbackKind>('bug');
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [sentRef, setSentRef] = useState<number | null>(null);
-  const [shotFailed, setShotFailed] = useState(false);
+  const [failedCount, setFailedCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const openSheet = useCallback(async () => {
@@ -146,29 +144,34 @@ export function ReportIssueProvider({ children }: { children: ReactNode }) {
     } catch {
       uri = null; // capture is a nicety, never a blocker
     }
-    setShot(uri);
-    setIncludeShot(!!uri);
+    setShots(uri ? [uri] : []);
     setOpen(true);
   }, []);
 
-  const pickFromLibrary = useCallback(async () => {
+  const addFromLibrary = useCallback(async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) return;
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.7,
+      allowsMultipleSelection: true,
+      selectionLimit: MAX_ATTACHMENTS,
+    });
     if (res.canceled || !res.assets?.length) return;
-    setShot(res.assets[0].uri);
-    setPicked(true);
-    setIncludeShot(true);
+    setShots((prev) => [...prev, ...res.assets.map((a) => a.uri)].slice(0, MAX_ATTACHMENTS));
+  }, []);
+
+  const removeShot = useCallback((i: number) => {
+    setShots((prev) => prev.filter((_, n) => n !== i));
   }, []);
 
   const close = useCallback(() => {
     setOpen(false);
-    setShot(null);
-    setPicked(false);
+    setShots([]);
     setMessage('');
     setKind('bug');
     setSentRef(null);
-    setShotFailed(false);
+    setFailedCount(0);
     setError(null);
   }, []);
 
@@ -177,20 +180,20 @@ export function ReportIssueProvider({ children }: { children: ReactNode }) {
     setSending(true);
     setError(null);
     try {
-      const { ref, screenshotFailed } = await submitFeedback({
+      const { ref, failedAttachments } = await submitFeedback({
         kind,
         message,
         route: pathname,
-        screenshotUri: includeShot ? shot : null,
+        screenshotUris: shots,
       });
-      setShotFailed(screenshotFailed);
+      setFailedCount(failedAttachments);
       setSentRef(ref);
     } catch {
       setError('Could not send that report. Please try again.');
     } finally {
       setSending(false);
     }
-  }, [message, sending, kind, pathname, includeShot, shot]);
+  }, [message, sending, kind, pathname, shots]);
 
   const ctx = useMemo(() => ({ open: openSheet }), [openSheet]);
 
@@ -216,9 +219,11 @@ export function ReportIssueProvider({ children }: { children: ReactNode }) {
                 <ThemedText type="small" themeColor="textSecondary" style={styles.center}>
                   Thanks — quote #{sentRef} if you want to talk about this one.
                 </ThemedText>
-                {shotFailed ? (
+                {failedCount > 0 ? (
                   <ThemedText type="small" style={[styles.center, { color: theme.danger }]}>
-                    The screenshot couldn’t be uploaded, so this report went without one.
+                    {failedCount === 1
+                      ? 'One attachment couldn’t be uploaded, so it isn’t on this report.'
+                      : `${failedCount} attachments couldn’t be uploaded, so they aren’t on this report.`}
                   </ThemedText>
                 ) : null}
                 <Pressable onPress={close} style={[styles.primary, { backgroundColor: BRAND.accent }]}>
@@ -264,32 +269,40 @@ export function ReportIssueProvider({ children }: { children: ReactNode }) {
                   autoFocus
                 />
 
-                {shot ? (
-                  <Pressable
-                    onPress={() => setIncludeShot((v) => !v)}
-                    accessibilityRole="checkbox"
-                    accessibilityState={{ checked: includeShot }}
-                    style={styles.shotRow}>
-                    <Ionicons
-                      name={includeShot ? 'checkbox' : 'square-outline'}
-                      size={20}
-                      color={includeShot ? BRAND.accent : theme.textSecondary}
-                    />
-                    <ThemedText type="small" style={{ flex: 1 }}>
-                      {picked ? 'Include this photo' : 'Include a screenshot of this screen'}
-                    </ThemedText>
-                    <Image source={{ uri: shot }} style={[styles.thumb, { borderColor: theme.border }]} contentFit="cover" />
-                  </Pressable>
-                ) : null}
-
-                {/* Not every problem is visible on the screen you're on — sometimes the
-                    evidence is a photo you already took (#13). */}
-                <Pressable onPress={pickFromLibrary} style={styles.shotRow} accessibilityRole="button">
-                  <Ionicons name="images-outline" size={20} color={theme.textSecondary} />
-                  <ThemedText type="small" style={{ flex: 1 }}>
-                    {picked ? 'Choose a different photo' : 'Attach a photo from your library instead'}
-                  </ThemedText>
-                </Pressable>
+                {/* The first tile is the auto-capture of the screen behind the sheet;
+                    the rest come from the library, because not every problem is visible
+                    on the screen you happen to be on (#13). Any of them can be removed. */}
+                <ThemedText type="small" themeColor="textSecondary" style={{ marginTop: 14 }}>
+                  Attachments {shots.length}/{MAX_ATTACHMENTS}
+                </ThemedText>
+                <View style={styles.thumbRow}>
+                  {shots.map((uri, i) => (
+                    <View key={`${uri}-${i}`}>
+                      <Image
+                        source={{ uri }}
+                        style={[styles.thumb, { borderColor: theme.border }]}
+                        contentFit="cover"
+                      />
+                      <Pressable
+                        onPress={() => removeShot(i)}
+                        hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Remove attachment ${i + 1}`}
+                        style={styles.thumbRemove}>
+                        <Ionicons name="close" size={13} color="#fff" />
+                      </Pressable>
+                    </View>
+                  ))}
+                  {shots.length < MAX_ATTACHMENTS ? (
+                    <Pressable
+                      onPress={addFromLibrary}
+                      accessibilityRole="button"
+                      accessibilityLabel="Add a photo from your library"
+                      style={[styles.thumbAdd, { borderColor: theme.border }]}>
+                      <Ionicons name="add" size={22} color={theme.textSecondary} />
+                    </Pressable>
+                  ) : null}
+                </View>
 
                 {error ? (
                   <ThemedText type="small" style={{ color: theme.danger, marginTop: 8 }}>{error}</ThemedText>
@@ -337,7 +350,27 @@ const styles = StyleSheet.create({
   kinds: { gap: 8, marginBottom: 12 },
   kind: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
   input: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, padding: 12, minHeight: 96, fontSize: 15, textAlignVertical: 'top' },
-  shotRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12 },
+  thumbRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 },
+  thumbRemove: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FF3B30',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  thumbAdd: {
+    width: 44,
+    height: 60,
+    borderRadius: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   thumb: { width: 44, height: 60, borderRadius: 6, borderWidth: StyleSheet.hairlineWidth },
   primary: { marginTop: 16, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
   done: { alignItems: 'center', gap: 10, paddingVertical: 20 },

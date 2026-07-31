@@ -10,7 +10,7 @@ import { ThemedView } from '@/components/themed-view';
 import { ActionMenu } from '@/components/ui/action-menu';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/use-theme';
-import { confirm } from '@/lib/confirm';
+import { confirm, notify } from '@/lib/confirm';
 import {
   blockUser,
   followUser,
@@ -71,10 +71,18 @@ export default function PublicProfileScreen() {
   async function onFollowPress() {
     if (!overview || busy) return;
     setBusy(true);
+    const wasFollowing = !!overview.follow_status;
     try {
-      if (overview.follow_status) await unfollowUser(overview.id);
+      if (wasFollowing) await unfollowUser(overview.id);
       else await followUser(overview);
       await load();
+    } catch {
+      // Without this the rejection was swallowed and the button simply did nothing —
+      // which is exactly how a rejected follow insert looked to reporters (#8).
+      notify(
+        wasFollowing ? 'Couldn’t unfollow' : 'Couldn’t follow',
+        'Something went wrong. Please try again.',
+      );
     } finally {
       setBusy(false);
     }

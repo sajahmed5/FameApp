@@ -121,12 +121,26 @@ export default function PostViewScreen() {
     );
   }
 
+  // Your own post: counts stay visible, but liking or skipping it is not a thing you
+  // get to do to yourself (#17). Also enforced in RLS — see the swipes insert policy.
+  const isOwnPost = post.user_id === user?.id;
+
   return (
     <ThemedView style={styles.fill}>
       <Stack.Screen
         options={{
           headerShown: true,
-          title: `@${post.handle}`,
+          // A plain `title` string isn't tappable, so "@handle" looked like a dead link
+          // to anyone trying to reach the author's profile from a post (#7).
+          headerTitle: () => (
+            <Pressable
+              onPress={() => router.push({ pathname: '/u/[handle]', params: { handle: post.handle } })}
+              hitSlop={8}
+              accessibilityRole="link"
+              accessibilityLabel={`Open @${post.handle}’s profile`}>
+              <ThemedText type="subtitle">@{post.handle}</ThemedText>
+            </Pressable>
+          ),
           headerRight: () => (
             <View style={styles.headerRight}>
               <Pressable
@@ -191,13 +205,13 @@ export default function PostViewScreen() {
             icon={myDir === 'right' ? 'heart' : 'heart-outline'}
             value={likeCount}
             tint={myDir === 'right' ? BRAND.accent : theme.text}
-            onPress={() => setDirection(myDir === 'right' ? null : 'right')}
+            onPress={isOwnPost ? undefined : () => setDirection(myDir === 'right' ? null : 'right')}
           />
           <Stat
             icon={myDir === 'left' ? 'close-circle' : 'close'}
             value={skipCount}
             tint={myDir === 'left' ? BRAND.accent : theme.textSecondary}
-            onPress={() => setDirection(myDir === 'left' ? null : 'left')}
+            onPress={isOwnPost ? undefined : () => setDirection(myDir === 'left' ? null : 'left')}
           />
           <Stat
             icon="chatbubble-outline"
@@ -206,7 +220,7 @@ export default function PostViewScreen() {
             onPress={() => setCommentsOpen(true)}
           />
           <View style={{ flex: 1 }} />
-          {post.user_id === user?.id ? (
+          {isOwnPost ? (
             <Pressable
               onPress={() => setOwnerMenu(true)}
               hitSlop={8}

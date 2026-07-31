@@ -131,7 +131,15 @@ function RootNavigator() {
   }, [user?.id, status]);
 
   return (
-    <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        animation: 'slide_from_right',
+        // iOS labels the back button with the PREVIOUS screen's title, so it leaked raw
+        // route names — "tabs" coming from (tabs), and a conversation id on the details
+        // screen (#10, #15). A chevron with no label can't leak anything.
+        headerBackButtonDisplayMode: 'minimal',
+      }}>
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(onboarding)" />

@@ -154,16 +154,24 @@ export default function SettingsScreen() {
             onValueChange={togglePrivacy}
           />
           <ToggleRow
-            label="Approve new followers"
-            sublabel="New followers need your approval, even on a public profile. Private posts stay limited to people you've approved."
-            value={approveFollowers}
-            onValueChange={toggleFollowApproval}
-          />
-          <ToggleRow
             label="Share anonymous usage data"
             sublabel="Helps improve Phixr. Never your identity, and never which posts you swipe."
             value={shareUsage}
             onValueChange={toggleUsage}
+          />
+          {/* Phrased as the positive ("accept automatically") rather than the stored
+              column ("require approval"), so the switch reads the way people expect.
+              A private account always approves, whatever this says. */}
+          <ToggleRow
+            label="Automatically accept followers"
+            sublabel={
+              isPrivate
+                ? 'Turned off while your account is private — private accounts always approve new followers.'
+                : 'Off means people have to send you a follow request instead.'
+            }
+            value={!isPrivate && !approveFollowers}
+            disabled={isPrivate}
+            onValueChange={(v) => toggleFollowApproval(!v)}
           />
         </Group>
 
@@ -354,14 +362,16 @@ function ToggleRow({
   sublabel,
   value,
   onValueChange,
+  disabled,
 }: {
   label: string;
   sublabel?: string;
   value: boolean;
   onValueChange: (v: boolean) => void;
+  disabled?: boolean;
 }) {
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, disabled ? { opacity: 0.5 } : null]}>
       <View style={styles.rowText}>
         <ThemedText type="default">{label}</ThemedText>
         {sublabel ? (
@@ -370,7 +380,12 @@ function ToggleRow({
           </ThemedText>
         ) : null}
       </View>
-      <Switch value={value} onValueChange={onValueChange} trackColor={{ true: BRAND.accent }} />
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
+        disabled={disabled}
+        trackColor={{ true: BRAND.accent }}
+      />
     </View>
   );
 }

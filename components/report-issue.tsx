@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -6,6 +7,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -15,11 +17,13 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
+  PanResponder,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
+  useWindowDimensions,
   View,
   type StyleProp,
   type ViewStyle,
@@ -40,8 +44,16 @@ const KINDS: { key: FeedbackKind; label: string; icon: keyof typeof Ionicons.gly
   { key: 'other', label: 'Something else', icon: 'chatbox-ellipses-outline' },
 ];
 
+const FAB_SIZE = 34;
+const FAB_MARGIN = 10;
+const FAB_POS_KEY = 'phixr.reportFab.pos';
+
+type FabPos = { x: number; y: number };
+
 const ReportIssueContext = createContext<{
   open: (beforeOpen?: () => void) => void;
+  pos: FabPos | null;
+  setPos: (p: FabPos) => void;
 } | null>(null);
 
 /**
@@ -68,19 +80,59 @@ export function ReportFab({
   onBeforeOpen?: () => void;
 }) {
   const { user } = useAuth();
-  const { open } = useReportIssue();
+  const { open, pos, setPos } = useReportIssue();
+  const insets = useSafeAreaInsets();
+  const { width: winW, height: winH } = useWindowDimensions();
+
+  const minY = insets.top + 8;
+  const maxY = winH - insets.bottom - FAB_SIZE - 8;
+  const rightX = winW - FAB_SIZE - FAB_MARGIN;
+  const resting: FabPos = pos ?? { x: rightX, y: Math.round(winH * 0.45) };
+
+  // Live position during a drag; null when not dragging.
+  const [drag, setDrag] = useState<FabPos | null>(null);
+  const { x: restX, y: restY } = resting;
+  const responder = useMemo(
+    () =>
+      PanResponder.create({
+        // Let taps through to the Pressable; only claim the touch once it actually moves.
+        onStartShouldSetPanResponder: () => false,
+        onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dx) > 4 || Math.abs(g.dy) > 4,
+        onPanResponderMove: (_e, g) => setDrag({ x: restX + g.dx, y: restY + g.dy }),
+        onPanResponderRelease: (_e, g) => {
+          const x = restX + g.dx;
+          // Snap to whichever side it's nearest, so it never sits stranded mid-screen.
+          setPos({
+            x: x + FAB_SIZE / 2 < winW / 2 ? FAB_MARGIN : rightX,
+            y: Math.max(minY, Math.min(maxY, restY + g.dy)),
+          });
+          setDrag(null);
+        },
+        onPanResponderTerminate: () => setDrag(null),
+      }),
+    // `resting` only changes on release, so the responder is never rebuilt mid-drag.
+    [restX, restY, minY, maxY, rightX, winW, setPos],
+  );
 
   // Reports are attributed, and the sheet needs an account.
   if (!user) return null;
 
+  const at = drag ?? resting;
+
   return (
-    <Pressable
-      onPress={() => open(onBeforeOpen)}
-      accessibilityRole="button"
-      accessibilityLabel="Report a problem with the app"
-      style={[styles.fab, style]}>
-      <Ionicons name="bug" size={16} color="#fff" />
-    </Pressable>
+    <View
+      {...responder.panHandlers}
+      style={[styles.fab, { left: at.x, top: at.y }, drag ? styles.fabDragging : null, style]}>
+      <Pressable
+        // No drag-vs-tap guard needed: once the pan responder claims the touch the
+        // Pressable is cancelled, so a drag can't also fire a press.
+        onPress={() => open(onBeforeOpen)}
+        accessibilityRole="button"
+        accessibilityLabel="Report a problem with the app. Drag to move it out of the way."
+        style={styles.fabHit}>
+        <Ionicons name="bug" size={16} color="#fff" />
+      </Pressable>
+    </View>
   );
 }
 
@@ -186,7 +238,33 @@ export function ReportIssueProvider({ children }: { children: ReactNode }) {
     }
   }, [message, sending, kind, pathname, shots]);
 
-  const ctx = useMemo(() => ({ open: openSheet }), [openSheet]);
+  // Where the user has dragged the button to. Held here rather than in ReportFab so the
+  // several instances (root, each modal host, the editor) all agree, and persisted so it
+  // stays where it was put.
+  const [fabPos, setFabPos] = useState<FabPos | null>(null);
+  useEffect(() => {
+    let alive = true;
+    AsyncStorage.getItem(FAB_POS_KEY)
+      .then((raw) => {
+        if (!alive || !raw) return;
+        const p = JSON.parse(raw) as FabPos;
+        if (typeof p?.x === 'number' && typeof p?.y === 'number') setFabPos(p);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const setPos = useCallback((p: FabPos) => {
+    setFabPos(p);
+    AsyncStorage.setItem(FAB_POS_KEY, JSON.stringify(p)).catch(() => {});
+  }, []);
+
+  const ctx = useMemo(
+    () => ({ open: openSheet, pos: fabPos, setPos }),
+    [openSheet, fabPos, setPos],
+  );
 
   return (
     <ReportIssueContext.Provider value={ctx}>
@@ -350,16 +428,15 @@ const styles = StyleSheet.create({
    */
   fab: {
     position: 'absolute',
-    top: '45%',
-    right: 10,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: FAB_SIZE,
+    height: FAB_SIZE,
+    borderRadius: FAB_SIZE / 2,
     backgroundColor: 'rgba(0,0,0,0.45)',
+    opacity: 0.75,
     zIndex: 40,
   },
+  fabDragging: { opacity: 1, transform: [{ scale: 1.15 }] },
+  fabHit: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' },
   sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, gap: 4 },
   handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(128,128,128,0.4)', marginBottom: 10 },

@@ -490,8 +490,9 @@ const styles = StyleSheet.create({
   canvasArea: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   panel: { backgroundColor: '#111' },
   rowPad: { paddingHorizontal: 12, paddingVertical: 10, gap: 10, flexDirection: 'row', alignItems: 'center' },
-  // Below the top bar's controls, clear of Done and of the filter swatch row.
-  reportFab: { bottom: undefined, top: 104, zIndex: 60 },
+  // Only raise it above the editor chrome — the position itself is user-draggable and
+  // shared with every other instance, so it must not be pinned here.
+  reportFab: { zIndex: 60 },
   filterChip: { alignItems: 'center', gap: 4, marginRight: 6 },
   filterSwatch: {
     width: SWATCH + 4,

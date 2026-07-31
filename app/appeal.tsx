@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { ReportFab } from '@/components/report-issue';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/use-theme';
@@ -89,6 +90,9 @@ export default function AppealScreen() {
           <Button title="Submit appeal" onPress={submit} loading={busy} disabled={reason.trim().length < 3} />
         </ScrollView>
       </KeyboardAvoidingView>
+      {/* This route is presented as a modal, which iOS puts in its own container —
+          the app-wide button can't reach it. */}
+      <ReportFab />
     </ThemedView>
   );
 }

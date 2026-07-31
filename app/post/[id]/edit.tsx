@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { TagPicker, type SelectedTag } from '@/components/compose/tag-picker';
+import { ReportFab } from '@/components/report-issue';
 import { PostAnalyticsCard } from '@/components/profile/post-analytics-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -177,6 +178,9 @@ export default function EditPostScreen() {
           />
         </View>
       </KeyboardAvoidingView>
+      {/* This route is presented as a modal, which iOS puts in its own container —
+          the app-wide button can't reach it. */}
+      <ReportFab />
     </ThemedView>
   );
 }

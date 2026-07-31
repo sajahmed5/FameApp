@@ -2,6 +2,7 @@ import { Stack, useRouter } from 'expo-router';
 import { useCallback } from 'react';
 
 import { FirstRunTutorial } from '@/components/first-run-tutorial';
+import { ReportFab } from '@/components/report-issue';
 import { useAuth } from '@/lib/auth-context';
 import { armCameraCoach } from '@/lib/coach-marks';
 import { markTutorialComplete } from '@/lib/profile';
@@ -30,6 +31,9 @@ export default function TutorialModal() {
     <>
       <Stack.Screen options={{ headerShown: false, presentation: 'fullScreenModal' }} />
       <FirstRunTutorial onDone={done} />
+      {/* fullScreenModal with gestureEnabled:false — a blocking first-run gate. Without
+          its own button there is no way to report being stuck here. */}
+      <ReportFab />
     </>
   );
 }

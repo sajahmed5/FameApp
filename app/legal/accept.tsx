@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { ReportFab } from '@/components/report-issue';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
 import { BRAND } from '@/constants/config';
@@ -60,6 +61,9 @@ export default function AcceptTermsScreen() {
       <View style={styles.footer}>
         <Button title="I accept" onPress={accept} loading={busy} />
       </View>
+      {/* This route is presented as a modal, which iOS puts in its own container —
+          the app-wide button can't reach it. */}
+      <ReportFab />
     </ThemedView>
   );
 }

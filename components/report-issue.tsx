@@ -6,7 +6,6 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useRef,
   useState,
@@ -14,7 +13,6 @@ import {
 } from 'react';
 import {
   ActivityIndicator,
-  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -31,7 +29,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BRAND, TAB_BAR_CLEARANCE } from '@/constants/config';
+import { BRAND } from '@/constants/config';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { MAX_ATTACHMENTS, submitFeedback, type FeedbackKind } from '@/lib/feedback';
@@ -57,27 +55,6 @@ export function useReportIssue() {
   return ctx;
 }
 
-/** Tracks the on-screen keyboard so the button can sit above it rather than behind it. */
-function useKeyboardHeight() {
-  const [height, setHeight] = useState(0);
-  useEffect(() => {
-    // `will*` on iOS keeps the button in step with the keyboard's animation.
-    const show = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      (e) => setHeight(e.endCoordinates.height),
-    );
-    const hide = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => setHeight(0),
-    );
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, []);
-  return height;
-}
-
 /**
  * The floating bug button. The provider mounts one automatically; mount another inside
  * any `<Modal>` so the affordance stays reachable there too.
@@ -90,28 +67,18 @@ export function ReportFab({
   /** Mounted inside a <Modal>? Pass its dismiss — see the note in openSheet. */
   onBeforeOpen?: () => void;
 }) {
-  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { open } = useReportIssue();
-  const keyboard = useKeyboardHeight();
 
   // Reports are attributed, and the sheet needs an account.
   if (!user) return null;
-
-  // With the keyboard up, the bottom-right corner belongs to whatever composer
-  // raised it — anchoring there put this button straight on top of the send arrow.
-  // Top-right is the one spot no composer ever occupies.
-  const anchor: ViewStyle =
-    keyboard > 0
-      ? { top: insets.top + 8, bottom: undefined }
-      : { bottom: insets.bottom + TAB_BAR_CLEARANCE + 8 };
 
   return (
     <Pressable
       onPress={() => open(onBeforeOpen)}
       accessibilityRole="button"
       accessibilityLabel="Report a problem with the app"
-      style={[styles.fab, anchor, style]}>
+      style={[styles.fab, style]}>
       <Ionicons name="bug" size={16} color="#fff" />
     </Pressable>
   );
@@ -367,8 +334,23 @@ export function ReportIssueProvider({ children }: { children: ReactNode }) {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  /**
+   * Anchored to the middle of the right edge, NOT a corner.
+   *
+   * The bottom-right corner was wrong: it offset by TAB_BAR_CLEARANCE, which is only
+   * correct on the four tab screens that actually show the floating bar. Everywhere
+   * else it floated into whatever owns the bottom-right — landing fully inside the
+   * Messages "New message" button and stealing its touch, inside the camera's shutter
+   * cluster, on sheet row checkmarks, and over inline Save buttons. Moving it to the
+   * top-right while the keyboard was up only traded those for the story viewer's close
+   * and ⋯ controls and the upload banner.
+   *
+   * The vertical middle of the right edge is empty on every screen in the app, and it
+   * sits above any keyboard, so no keyboard tracking is needed either.
+   */
   fab: {
     position: 'absolute',
+    top: '45%',
     right: 10,
     width: 34,
     height: 34,

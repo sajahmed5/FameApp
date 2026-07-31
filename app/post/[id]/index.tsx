@@ -17,10 +17,15 @@ import { BRAND } from '@/constants/config';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { getBookmarkState } from '@/lib/bookmarks';
+import { fetchComments, type CommentView } from '@/lib/comments';
 import { confirm } from '@/lib/confirm';
 import { recordSwipe, undoSwipe } from '@/lib/deck';
 import { formatCount } from '@/lib/format';
 import { deletePost, getMyPosts, getPostDetail, getPostExtras, POST_REPORT_REASONS, reportPost, type PostDetail, type PostMediaItem } from '@/lib/posts';
+
+/** How many comments to show inline before "View all". Two fits without pushing the
+ *  rest of the post off-screen. */
+const COMMENT_PREVIEW = 2;
 
 export default function PostViewScreen() {
   const theme = useTheme();
@@ -32,6 +37,7 @@ export default function PostViewScreen() {
   const [post, setPost] = useState<PostDetail | null>(null);
   const [ownerMenu, setOwnerMenu] = useState(false);
   const [extras, setExtras] = useState<PostMediaItem[]>([]);
+  const [preview, setPreview] = useState<CommentView[]>([]);
   const [page, setPage] = useState(0);
   const [status, setStatus] = useState<'loading' | 'ready' | 'missing' | 'error'>('loading');
   const [commentsOpen, setCommentsOpen] = useState(false);
@@ -86,6 +92,9 @@ export default function PostViewScreen() {
       setStatus('ready');
       getBookmarkState(id).then((s) => setSaved(s.saved)).catch(() => {});
       getPostExtras(id).then(setExtras).catch(() => setExtras([]));
+      // A couple of comments inline, so you can see whether there's any conversation
+      // without opening the sheet to find out (#6).
+      fetchComments(id, undefined, COMMENT_PREVIEW).then(setPreview).catch(() => setPreview([]));
     } catch {
       setStatus('error');
     }
@@ -280,6 +289,19 @@ export default function PostViewScreen() {
           </View>
         ) : null}
 
+        {preview.length > 0 ? (
+          <View style={styles.previewWrap}>
+            {preview.map((c) => (
+              <Pressable key={c.id} onPress={() => setCommentsOpen(true)} style={styles.previewRow}>
+                <ThemedText type="smallBold">@{c.author_handle}</ThemedText>
+                <MentionText type="small" style={styles.previewBody} numberOfLines={2}>
+                  {c.is_deleted ? 'This comment was deleted.' : (c.body ?? '')}
+                </MentionText>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+
         <Pressable
           onPress={() => setCommentsOpen(true)}
           accessibilityRole="button"
@@ -323,7 +345,11 @@ export default function PostViewScreen() {
       {commentsOpen ? (
         <CommentSheet
           postId={post.id}
-          onClose={() => setCommentsOpen(false)}
+          onClose={() => {
+            setCommentsOpen(false);
+            // Otherwise a comment you just wrote wouldn't appear in the inline preview.
+            if (id) fetchComments(id, undefined, COMMENT_PREVIEW).then(setPreview).catch(() => {});
+          }}
           onCountDelta={(d) => setCommentCount((c) => Math.max(0, c + d))}
         />
       ) : null}
@@ -409,6 +435,9 @@ const styles = StyleSheet.create({
   caption: {},
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tag: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
+  previewWrap: { gap: 6, marginTop: 12 },
+  previewRow: { flexDirection: 'row', gap: 6, alignItems: 'baseline' },
+  previewBody: { flex: 1 },
   siblingNav: {
     flexDirection: 'row',
     alignItems: 'center',

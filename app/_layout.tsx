@@ -9,6 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { CameraCoachMark } from '@/components/camera-coach-mark';
 import { OfflineBanner } from '@/components/offline-banner';
+import { ReportIssueProvider } from '@/components/report-issue';
 import { UploadBanner } from '@/components/upload-banner';
 import { TERMS_VERSION } from '@/constants/legal';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -179,10 +180,13 @@ function RootLayout() {
           <AuthProvider>
             <NotificationsProvider>
               <UploadManagerProvider>
-                <RootNavigator />
-                <UploadBanner />
-                <CameraCoachMark />
-                <OfflineBanner />
+                {/* Wraps the app so a report can screenshot the screen behind it. */}
+                <ReportIssueProvider>
+                  <RootNavigator />
+                  <UploadBanner />
+                  <CameraCoachMark />
+                  <OfflineBanner />
+                </ReportIssueProvider>
               </UploadManagerProvider>
             </NotificationsProvider>
           </AuthProvider>

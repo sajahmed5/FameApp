@@ -52,3 +52,7 @@ secrets/
 
 # Firebase Android config (supplied to builds via the GOOGLE_SERVICES_JSON EAS file env var)
 google-services.json
+
+# Firebase service-account keys (FCM V1) — SECRET, never commit
+*firebase-adminsdk*.json
+*-service-account*.json

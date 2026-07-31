@@ -37,10 +37,14 @@ import {
   type TextLayer,
 } from '@/components/media-editor/types';
 import { useEditorHistory } from '@/components/media-editor/use-editor-history';
+import { ReportFab } from '@/components/report-issue';
 import { ThemedText } from '@/components/themed-text';
 import { exportEditedImage, type ExportedMedia } from '@/lib/media-editor';
 
 type Tool = 'filter' | 'text' | 'sticker' | 'draw';
+
+/** Filter preview tile size; the bordered swatch adds its 2pt border either side. */
+const SWATCH = 44;
 
 /** Build a Skia path from captured points (simple polyline; round-capped when stroked). */
 function toPath(points: { x: number; y: number }[]) {
@@ -214,6 +218,10 @@ export function MediaEditor({
 
   return (
     <View style={styles.root}>
+      {/* This screen is a fullScreenModal, which iOS presents in its own container —
+          the app-wide button can't paint over it, so mount one here. */}
+      <ReportFab style={styles.reportFab} />
+
       {/* Top bar */}
       <View style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
         <Pressable onPress={onCancel} hitSlop={10} disabled={exporting}>
@@ -315,12 +323,28 @@ export function MediaEditor({
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rowPad}>
               {FILTERS.map((f) => (
                 <Pressable key={f.id} style={styles.filterChip} onPress={() => setFilter(f.id)}>
+                  {/* Was an empty bordered box, which told you nothing. Each swatch is
+                      now the actual photo under that filter — same Skia paint as the
+                      main canvas, just small. */}
                   <View
                     style={[
                       styles.filterSwatch,
                       { borderColor: doc.filterId === f.id ? BRAND.accent : '#333' },
-                    ]}
-                  />
+                    ]}>
+                    {image ? (
+                      <Canvas style={styles.filterSwatchCanvas}>
+                        <SkiaImage
+                          image={image}
+                          x={0}
+                          y={0}
+                          width={SWATCH}
+                          height={SWATCH}
+                          fit="cover">
+                          {f.matrix ? <ColorMatrix matrix={f.matrix} /> : null}
+                        </SkiaImage>
+                      </Canvas>
+                    ) : null}
+                  </View>
                   <Text style={[styles.chipLabel, doc.filterId === f.id && styles.chipActive]}>{f.label}</Text>
                 </Pressable>
               ))}
@@ -455,8 +479,18 @@ const styles = StyleSheet.create({
   canvasArea: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   panel: { backgroundColor: '#111' },
   rowPad: { paddingHorizontal: 12, paddingVertical: 10, gap: 10, flexDirection: 'row', alignItems: 'center' },
+  // Above the tool panel, clear of the Done button and the swatch row.
+  reportFab: { bottom: undefined, top: 96, zIndex: 60 },
   filterChip: { alignItems: 'center', gap: 4, marginRight: 6 },
-  filterSwatch: { width: 44, height: 44, borderRadius: 8, borderWidth: 2, backgroundColor: '#222' },
+  filterSwatch: {
+    width: SWATCH + 4,
+    height: SWATCH + 4,
+    borderRadius: 8,
+    borderWidth: 2,
+    backgroundColor: '#222',
+    overflow: 'hidden',
+  },
+  filterSwatchCanvas: { width: SWATCH, height: SWATCH },
   chipLabel: { color: '#aaa', fontSize: 11 },
   chipActive: { color: BRAND.accent, fontWeight: '600' },
   sticker: { padding: 6 },

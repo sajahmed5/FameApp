@@ -2,11 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Pressable, StyleSheet, Text } from 'react-native';
-import Animated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-} from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 
 import type { OverlayLayer } from '@/components/media-editor/types';
 import { BRAND } from '@/constants/config';
@@ -53,6 +49,7 @@ export function EditableOverlay({
   const commit = () => onCommit(layer.id, { x: x.value, y: y.value, scale: scale.value, rotation: rotation.value });
 
   const pan = Gesture.Pan()
+    .runOnJS(true)
     .onBegin(() => {
       startX.value = x.value;
       startY.value = y.value;
@@ -61,32 +58,41 @@ export function EditableOverlay({
       x.value = startX.value + e.translationX;
       y.value = startY.value + e.translationY;
     })
-    .onEnd(() => runOnJS(commit)());
+    .onEnd(commit);
 
   const pinch = Gesture.Pinch()
+    .runOnJS(true)
     .onBegin(() => {
       startScale.value = scale.value;
     })
     .onUpdate((e) => {
       scale.value = Math.max(0.2, Math.min(6, startScale.value * e.scale));
     })
-    .onEnd(() => runOnJS(commit)());
+    .onEnd(commit);
 
   const rotate = Gesture.Rotation()
+    .runOnJS(true)
     .onBegin(() => {
       startRot.value = rotation.value;
     })
     .onUpdate((e) => {
       rotation.value = startRot.value + e.rotation;
     })
-    .onEnd(() => runOnJS(commit)());
+    .onEnd(commit);
 
-  // Both taps run on the JS thread. They do nothing but call React callbacks, so there's
-  // no reason to workletize them — and doing so serialised `layer` plus two closures
-  // into the UI runtime on every render, where a throw is a hard crash rather than a
-  // caught error. A tester crashed here after adding text and then a sticker
-  // (RCTFatal from inside WorkletRuntime::runSync). Pan/pinch/rotate stay on the UI
-  // thread, because those genuinely need to be smooth.
+  // EVERY gesture here runs on the JS thread.
+  //
+  // Two crashes came out of this component in two days, both RCTFatal from inside
+  // WorkletRuntime::runSync — an unhandled JS throw on the UI thread, which is a hard
+  // abort rather than a caught error. The first was the taps; moving only those left a
+  // MIXED composition (taps on JS, pan/pinch/rotate as worklets) inside one
+  // Gesture.Simultaneous, and the second crash came from dragging and pinching.
+  //
+  // These callbacks only mutate shared values and call one React setter on end. Setting
+  // a shared value from the JS thread is supported, and useAnimatedStyle still reads it
+  // on the UI thread, so the transform itself stays off the JS thread. The cost is a
+  // frame of latency on a 34pt overlay; the benefit is that a throw here is catchable
+  // rather than fatal.
   const tap = Gesture.Tap()
     .runOnJS(true)
     .onEnd(() => onSelect(layer.id));

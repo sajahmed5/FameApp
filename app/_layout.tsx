@@ -161,9 +161,13 @@ function RootNavigator() {
         name="tutorial"
         options={{ presentation: 'fullScreenModal', headerShown: false, gestureEnabled: false }}
       />
+      {/* A pushed card, NOT a fullScreenModal. iOS presents a modal route in its own
+          container and then refuses to present the report sheet over it — the tap
+          silently did nothing while long-press (no UI) worked. As a card the editor
+          stays inside the navigator, so the app-wide button and sheet both reach it. */}
       <Stack.Screen
         name="edit"
-        options={{ presentation: 'fullScreenModal', headerShown: false, gestureEnabled: false }}
+        options={{ headerShown: false, gestureEnabled: false, animation: 'fade' }}
       />
       <Stack.Screen name="points" options={{ headerShown: true, title: 'How points work' }} />
       <Stack.Screen name="legal/[doc]" options={{ headerShown: true }} />

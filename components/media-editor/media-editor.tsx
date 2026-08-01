@@ -38,7 +38,6 @@ import {
   type TextLayer,
 } from '@/components/media-editor/types';
 import { useEditorHistory } from '@/components/media-editor/use-editor-history';
-import { ReportFab } from '@/components/report-issue';
 import { ThemedText } from '@/components/themed-text';
 import { exportEditedImage, type ExportedMedia } from '@/lib/media-editor';
 
@@ -464,11 +463,8 @@ export function MediaEditor({
         </View>
       ) : null}
 
-      {/* Last child on purpose. This screen is a fullScreenModal, which iOS presents in
-          its own container, so the app-wide button can't reach it — and mounted FIRST
-          it rendered but wasn't tappable, because the absolutely-positioned top bar is
-          painted after it and took the touch. */}
-      {!textDraft && !exporting ? <ReportFab style={styles.reportFab} /> : null}
+      {/* No ReportFab here any more: the editor is a pushed card rather than a modal
+          route, so the app-wide one reaches it — and two of them would fight. */}
     </View>
   );
 }
@@ -501,9 +497,6 @@ const styles = StyleSheet.create({
   canvasArea: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   panel: { backgroundColor: '#111' },
   rowPad: { paddingHorizontal: 12, paddingVertical: 10, gap: 10, flexDirection: 'row', alignItems: 'center' },
-  // Only raise it above the editor chrome — the position itself is user-draggable and
-  // shared with every other instance, so it must not be pinned here.
-  reportFab: { zIndex: 60 },
   filterChip: { alignItems: 'center', gap: 4, marginRight: 6 },
   filterSwatch: {
     width: SWATCH + 4,

@@ -18,6 +18,7 @@ import {
 } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   PanResponder,
   Platform,
@@ -145,8 +146,32 @@ export function ReportFab({ style }: { style?: StyleProp<ViewStyle> }) {
             notify('Crash reporting is OFF', 'Sentry did not initialise — no DSN in this build.');
             return;
           }
-          Sentry.captureMessage('Phixr test event (long-press on the report button)', 'error');
-          notify('Test event sent', 'Check sentry.io — it should appear within a few seconds.');
+          // Diagnostics menu. The crash option exists because native crash capture has
+          // never been PROVEN: a real crash on build 5 never reached the dashboard, and
+          // the scrubber hardening that followed is a hypothesis until a crash tests it.
+          // Deliberate beats waiting for an accident.
+          Alert.alert('Crash reporting diagnostics', 'Both options report to sentry.io.', [
+            {
+              text: 'Send test event',
+              onPress: () => {
+                Sentry.captureMessage('Phixr test event (long-press on the report button)', 'error');
+                notify('Test event sent', 'Check sentry.io — it should appear within a few seconds.');
+              },
+            },
+            {
+              text: 'Test CRASH (closes the app)',
+              style: 'destructive',
+              onPress: () => {
+                // Thrown from a timeout so nothing upstream can catch it — this must go
+                // through the same fatal path as a real crash. Reopen the app afterwards:
+                // sentry-cocoa uploads the report on the NEXT launch.
+                setTimeout(() => {
+                  throw new Error('Phixr deliberate crash test — if you can read this in Sentry, native crash capture works');
+                }, 100);
+              },
+            },
+            { text: 'Cancel', style: 'cancel' },
+          ]);
         }}
         accessibilityRole="button"
         accessibilityLabel="Report a problem with the app. Drag to move it out of the way."

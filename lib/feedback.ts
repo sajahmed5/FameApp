@@ -33,7 +33,21 @@ export async function submitFeedback(input: {
 }): Promise<SubmittedFeedback> {
   const { data: u } = await supabase.auth.getUser();
   const uid = u.user?.id;
-  if (!uid) throw new Error('Not signed in.');
+
+  if (!uid) {
+    // Signed out — login, forgot-password, sign-up. A SECURITY DEFINER RPC is the only
+    // anon path (an `anon` insert policy would be an open write endpoint), and it takes
+    // no attachment, because anon has no storage grant.
+    const { data, error } = await supabase.rpc('submit_anon_feedback', {
+      _kind: input.kind,
+      _message: input.message.trim(),
+      _route: input.route ?? null,
+      _platform: Platform.OS,
+      _app_version: Application.nativeApplicationVersion ?? null,
+    });
+    if (error) throw new Error(error.message || 'Could not send that report.');
+    return { ref: Number(data), failedAttachments: 0 };
+  }
 
   const uris = (input.screenshotUris ?? []).slice(0, MAX_ATTACHMENTS);
   // Uploaded in parallel, but a failure only drops that one image — losing an

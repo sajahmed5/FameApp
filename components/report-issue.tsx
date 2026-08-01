@@ -79,7 +79,6 @@ export function ReportFab({
   /** Mounted inside a <Modal>? Pass its dismiss — see the note in openSheet. */
   onBeforeOpen?: () => void;
 }) {
-  const { user } = useAuth();
   const { open, pos, setPos } = useReportIssue();
   const insets = useSafeAreaInsets();
   const { width: winW, height: winH } = useWindowDimensions();
@@ -114,9 +113,6 @@ export function ReportFab({
     [restX, restY, minY, maxY, rightX, winW, setPos],
   );
 
-  // Reports are attributed, and the sheet needs an account.
-  if (!user) return null;
-
   const at = drag ?? resting;
 
   return (
@@ -150,6 +146,8 @@ export function ReportIssueProvider({ children }: { children: ReactNode }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
+  // Signed-out reports go through an anon RPC that takes no attachment.
+  const { user } = useAuth();
 
   const captureTarget = useRef<View>(null);
   const [open, setOpen] = useState(false);
@@ -352,9 +350,11 @@ export function ReportIssueProvider({ children }: { children: ReactNode }) {
                     the rest come from the library, because not every problem is visible
                     on the screen you happen to be on (#13). Any of them can be removed. */}
                 <ThemedText type="small" themeColor="textSecondary" style={{ marginTop: 14 }}>
-                  Attachments {shots.length}/{MAX_ATTACHMENTS}
+                  {user
+                    ? `Attachments ${shots.length}/${MAX_ATTACHMENTS}`
+                    : 'Sign in to attach a screenshot. Your description still reaches us.'}
                 </ThemedText>
-                <View style={styles.thumbRow}>
+                <View style={[styles.thumbRow, !user && { display: 'none' }]}>
                   {shots.map((uri, i) => (
                     <View key={`${uri}-${i}`}>
                       <Image

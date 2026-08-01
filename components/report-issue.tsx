@@ -10,6 +10,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -18,7 +19,6 @@ import {
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
-  Modal,
   PanResponder,
   Platform,
   Pressable,
@@ -65,7 +65,10 @@ const BUILD_LABEL = `${Application.nativeBuildVersion ?? '?'}·${
 }`;
 
 const ReportIssueContext = createContext<{
-  open: (beforeOpen?: () => void) => void;
+  open: (openerId: string) => void;
+  activeOpener: string | null;
+  /** The sheet, rendered by whichever ReportFab opened it. Null for every other one. */
+  renderSheet: (openerId: string) => ReactNode;
   pos: FabPos | null;
   setPos: (p: FabPos) => void;
 } | null>(null);
@@ -85,15 +88,9 @@ export function useReportIssue() {
  * The floating bug button. The provider mounts one automatically; mount another inside
  * any `<Modal>` so the affordance stays reachable there too.
  */
-export function ReportFab({
-  style,
-  onBeforeOpen,
-}: {
-  style?: StyleProp<ViewStyle>;
-  /** Mounted inside a <Modal>? Pass its dismiss — see the note in openSheet. */
-  onBeforeOpen?: () => void;
-}) {
-  const { open, pos, setPos } = useReportIssue();
+export function ReportFab({ style }: { style?: StyleProp<ViewStyle> }) {
+  const openerId = useId();
+  const { open, activeOpener, renderSheet, pos, setPos } = useReportIssue();
   const insets = useSafeAreaInsets();
   const { width: winW, height: winH } = useWindowDimensions();
 
@@ -129,6 +126,10 @@ export function ReportFab({
 
   const at = drag ?? resting;
 
+  // While this instance owns the sheet, hide the button and render the sheet HERE — in
+  // the same window as the button that opened it.
+  if (activeOpener === openerId) return <>{renderSheet(openerId)}</>;
+
   return (
     <View
       {...responder.panHandlers}
@@ -136,7 +137,7 @@ export function ReportFab({
       <Pressable
         // No drag-vs-tap guard needed: once the pan responder claims the touch the
         // Pressable is cancelled, so a drag can't also fire a press.
-        onPress={() => open(onBeforeOpen)}
+        onPress={() => open(openerId)}
         // Long-press: prove whether this device can reach Sentry at all. "No crashes
         // reported" and "crash reporting isn't running" look identical otherwise.
         onLongPress={() => {
@@ -174,7 +175,8 @@ export function ReportIssueProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
 
   const captureTarget = useRef<View>(null);
-  const [open, setOpen] = useState(false);
+  /** Which ReportFab currently owns the sheet, so it renders in that one's window. */
+  const [opener, setOpener] = useState<string | null>(null);
   /** Attachments in the order they'll be shown. [0] is the auto-capture when it worked. */
   const [shots, setShots] = useState<string[]>([]);
   const [kind, setKind] = useState<FeedbackKind>('bug');
@@ -184,7 +186,7 @@ export function ReportIssueProvider({ children }: { children: ReactNode }) {
   const [failedCount, setFailedCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const openSheet = useCallback(async (beforeOpen?: () => void) => {
+  const openSheet = useCallback(async (openerId: string) => {
     // Capture FIRST, then open — otherwise every screenshot would just be the sheet.
     let uri: string | null = null;
     try {
@@ -199,18 +201,7 @@ export function ReportIssueProvider({ children }: { children: ReactNode }) {
       uri = null; // capture is a nicety, never a blocker
     }
     setShots(uri ? [uri] : []);
-
-    // iOS presents a <Modal> from the root view controller and refuses to present a
-    // second one while the first is up — it fails SILENTLY, leaving this sheet "open"
-    // but invisible and eating every touch. So a host modal dismisses itself first
-    // (after the capture, so the shot still shows the screen being reported), and we
-    // wait for its dismissal animation before presenting.
-    if (beforeOpen) {
-      beforeOpen();
-      setTimeout(() => setOpen(true), 350);
-      return;
-    }
-    setOpen(true);
+    setOpener(openerId);
   }, []);
 
   const addFromLibrary = useCallback(async () => {
@@ -231,7 +222,7 @@ export function ReportIssueProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const close = useCallback(() => {
-    setOpen(false);
+    setOpener(null);
     setShots([]);
     setMessage('');
     setKind('bug');
@@ -283,22 +274,18 @@ export function ReportIssueProvider({ children }: { children: ReactNode }) {
     AsyncStorage.setItem(FAB_POS_KEY, JSON.stringify(p)).catch(() => {});
   }, []);
 
-  const ctx = useMemo(
-    () => ({ open: openSheet, pos: fabPos, setPos }),
-    [openSheet, fabPos, setPos],
-  );
-
-  return (
-    <ReportIssueContext.Provider value={ctx}>
-      <View style={styles.fill}>
-        {/* Capture target for the web fallback; native uses captureScreen. */}
-        <View ref={captureTarget} collapsable={false} style={styles.fill}>
-          {children}
-        </View>
-
-        <ReportFab />
-
-        <Modal visible={open} transparent animationType="slide" onRequestClose={close}>
+  /**
+   * The sheet itself, rendered by the ReportFab that opened it rather than by this
+   * provider. It used to be a react-native <Modal>, which lives in its own native
+   * window: iOS refuses to present one over an already-presented modal and fails
+   * SILENTLY, so the button did nothing on every modal route and inside every modal
+   * sheet. As an in-tree overlay it is always in the same window as its button, which
+   * removes the whole class of bug — and the host no longer has to dismiss itself.
+   */
+  const renderSheet = (openerId: string): ReactNode => {
+    if (opener !== openerId) return null;
+    return (
+      <View style={styles.sheetLayer}>
         <Pressable style={styles.backdrop} onPress={close} accessibilityLabel="Close" />
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ThemedView style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
@@ -428,7 +415,27 @@ export function ReportIssueProvider({ children }: { children: ReactNode }) {
             )}
           </ThemedView>
           </KeyboardAvoidingView>
-        </Modal>
+      </View>
+    );
+  };
+
+  const ctx = {
+    open: openSheet,
+    activeOpener: opener,
+    renderSheet,
+    pos: fabPos,
+    setPos,
+  };
+
+  return (
+    <ReportIssueContext.Provider value={ctx}>
+      <View style={styles.fill}>
+        {/* Capture target for the web fallback; native uses captureScreen. */}
+        <View ref={captureTarget} collapsable={false} style={styles.fill}>
+          {children}
+        </View>
+
+        <ReportFab />
       </View>
     </ReportIssueContext.Provider>
   );
@@ -461,7 +468,9 @@ const styles = StyleSheet.create({
   },
   fabDragging: { opacity: 1, transform: [{ scale: 1.15 }] },
   fabHit: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' },
+  // The sheet is an in-tree overlay, so it must claim the whole host window itself.
+  sheetLayer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'flex-end', zIndex: 50 },
+  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)' },
   sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, gap: 4 },
   handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(128,128,128,0.4)', marginBottom: 10 },
   sheetClose: {

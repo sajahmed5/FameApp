@@ -269,22 +269,15 @@ export function ShareSheet({
           options={POST_REPORT_REASONS.map((r) => ({ label: r, onPress: () => doReport(r) }))}
         />
 
-        {/* Nested inside this sheet's own <Modal>, so reporting from it has to close
-            BOTH — closing only the picker leaves this modal presented and the report
-            sheet then fails to present at all. */}
         <CollectionPicker
           postId={post.id}
           visible={saveOpen}
           onClose={() => setSaveOpen(false)}
           onChange={setSaved}
-          onBeforeReport={() => {
-            setSaveOpen(false);
-            onClose();
-          }}
         />
       </GestureHandlerRootView>
-      {/* Closes this sheet first: iOS won't present a modal over a presented one. */}
-      <ReportFab onBeforeOpen={onClose} />
+      {/* The sheet renders inside this modal's own window, so it just works here. */}
+      <ReportFab />
     </Modal>
   );
 }

@@ -131,8 +131,8 @@ export function LocationPicker({
           />
         )}
       </ThemedView>
-      {/* Closes this sheet first: iOS won't present a modal over a presented one. */}
-      <ReportFab onBeforeOpen={onClose} />
+      {/* The sheet renders inside this modal's own window, so it just works here. */}
+      <ReportFab />
     </Modal>
   );
 }

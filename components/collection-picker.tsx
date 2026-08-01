@@ -24,19 +24,11 @@ export function CollectionPicker({
   visible,
   onClose,
   onChange,
-  onBeforeReport,
 }: {
   postId: string;
   visible: boolean;
   onClose: () => void;
   onChange?: (saved: boolean) => void;
-  /**
-   * Dismiss EVERY modal above the navigator, not just this one. This picker can be
-   * rendered inside the share sheet's own <Modal>, and iOS won't present the report
-   * sheet while any modal is still up — it fails silently and wedges the UI. Defaults
-   * to `onClose`, which is right when this is the only modal.
-   */
-  onBeforeReport?: () => void;
 }) {
   const theme = useTheme();
   const [collections, setCollections] = useState<Collection[] | null>(null);
@@ -180,8 +172,8 @@ export function CollectionPicker({
           </ScrollView>
         )}
       </View>
-      {/* Closes this sheet first: iOS won't present a modal over a presented one. */}
-      <ReportFab onBeforeOpen={onBeforeReport ?? onClose} />
+      {/* The sheet renders inside this modal's own window, so it just works here. */}
+      <ReportFab />
     </Modal>
   );
 }

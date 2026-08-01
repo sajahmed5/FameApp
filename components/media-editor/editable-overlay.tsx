@@ -8,6 +8,8 @@ import type { OverlayLayer } from '@/components/media-editor/types';
 import { BRAND } from '@/constants/config';
 
 const TEXT_BASE = 34;
+/** Selection badge size. Also the corner offset, so a badge sits fully outside. */
+const BADGE = 24;
 const STICKER_BASE = 52;
 
 export type Transform = { x: number; y: number; scale: number; rotation: number };
@@ -143,15 +145,13 @@ export function EditableOverlay({
           <>
             <Pressable
               style={[styles.badge, styles.badgeDelete]}
-              onPress={() => onDelete(layer.id)}
-              hitSlop={8}>
+              onPress={() => onDelete(layer.id)}>
               <Ionicons name="close" size={14} color="#fff" />
             </Pressable>
             {layer.kind === 'text' ? (
               <Pressable
                 style={[styles.badge, styles.badgeEdit]}
-                onPress={() => onEditText(layer.id)}
-                hitSlop={8}>
+                onPress={() => onEditText(layer.id)}>
                 <Ionicons name="pencil" size={13} color="#fff" />
               </Pressable>
             ) : null}
@@ -167,12 +167,15 @@ const styles = StyleSheet.create({
   selected: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.9)', borderRadius: 8, borderStyle: 'dashed' },
   badge: {
     position: 'absolute',
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: BADGE,
+    height: BADGE,
+    borderRadius: BADGE / 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  badgeDelete: { top: -12, right: -12, backgroundColor: '#FF3B30' },
-  badgeEdit: { top: -12, left: -12, backgroundColor: BRAND.accent },
+  // Fully OUTSIDE the item, and no hitSlop. At -12 with hitSlop 8 these Pressables
+  // covered ~40x40 — a small corner of a wide text layer, but most of the top of a ~64pt
+  // sticker, so the badge kept winning the touch and the sticker wouldn't drag at all.
+  badgeDelete: { top: -BADGE, right: -BADGE, backgroundColor: '#FF3B30' },
+  badgeEdit: { top: -BADGE, left: -BADGE, backgroundColor: BRAND.accent },
 });

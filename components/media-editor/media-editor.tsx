@@ -13,6 +13,8 @@ import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -422,7 +424,12 @@ export function MediaEditor({
 
       {/* Text input modal */}
       {textDraft ? (
-        <View style={styles.textModal}>
+        // KeyboardAvoidingView, because the font + colour row lives at the bottom and the
+        // keyboard is up the whole time you're typing — the controls were simply
+        // unreachable, so text could never be recoloured.
+        <KeyboardAvoidingView
+          style={styles.textModal}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={[styles.textModalBar, { paddingTop: insets.top + 8 }]}>
             <Pressable onPress={() => setTextDraft(null)} hitSlop={10}>
               <ThemedText style={{ color: '#fff' }}>Cancel</ThemedText>
@@ -460,7 +467,7 @@ export function MediaEditor({
               ))}
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       ) : null}
 
       {/* No ReportFab here any more: the editor is a pushed card rather than a modal

@@ -205,7 +205,9 @@ export default function SearchScreen() {
           autoCapitalize="none"
           returnKeyType="search"
           style={[styles.input, { color: theme.text }]}
-          autoFocus
+          // No autoFocus: land on the trending grid; the keyboard only comes up when
+          // the search bar is tapped. (The relocation sheet keeps its autoFocus — there
+          // typing is the only thing to do.)
         />
         {query.length > 0 ? (
           <Pressable onPress={() => setQuery('')} hitSlop={8} accessibilityLabel="Clear">

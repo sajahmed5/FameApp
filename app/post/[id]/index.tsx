@@ -2,13 +2,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { CollectionPicker } from '@/components/collection-picker';
 import { CommentSheet } from '@/components/comments/comment-sheet';
 import { MentionText } from '@/components/mention-text';
 import { PostAnalyticsCard } from '@/components/profile/post-analytics-card';
+import { VideoOverlays } from '@/components/video-overlays';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ActionMenu } from '@/components/ui/action-menu';
@@ -18,6 +19,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { getBookmarkState } from '@/lib/bookmarks';
 import { fetchComments, type CommentView } from '@/lib/comments';
+import { parseVideoOverlays } from '@/lib/video-overlays';
 import { confirm } from '@/lib/confirm';
 import { recordSwipe, undoSwipe } from '@/lib/deck';
 import { formatCount } from '@/lib/format';
@@ -199,7 +201,7 @@ export default function PostViewScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         {extras.length === 0 ? (
           post.media_type === 'video' ? (
-            <PostVideo uri={post.media_url} />
+            <PostVideo uri={post.media_url} overlays={post.overlays} />
           ) : (
             <Image source={{ uri: post.media_url }} style={styles.media} contentFit="cover" />
           )
@@ -412,13 +414,21 @@ function Stat({
   );
 }
 
-function PostVideo({ uri }: { uri: string }) {
+function PostVideo({ uri, overlays }: { uri: string; overlays?: unknown }) {
   const player = useVideoPlayer(uri, (p) => {
     p.loop = true;
     p.muted = false;
     p.play();
   });
-  return <VideoView player={player} style={styles.media} contentFit="cover" />;
+  const parsed = useMemo(() => parseVideoOverlays(overlays), [overlays]);
+  const [box, setBox] = useState({ w: 0, h: 0 });
+  return (
+    <View
+      onLayout={(e) => setBox({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
+      <VideoView player={player} style={styles.media} contentFit="cover" />
+      <VideoOverlays overlays={parsed} width={box.w} height={box.h} />
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({

@@ -4,7 +4,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { useEffect, useState } from 'react';
+
+import { VideoOverlays } from '@/components/video-overlays';
+import { parseVideoOverlays } from '@/lib/video-overlays';
+import { useEffect, useState, useMemo } from 'react';
 import { AppState, Pressable, StyleSheet, View } from 'react-native';
 
 import type { DeckCard } from '@/lib/deck';
@@ -36,6 +39,8 @@ function CardImage({ card }: { card: DeckCard }) {
 }
 
 function CardVideo({ card, isActive }: { card: DeckCard; isActive: boolean }) {
+  const overlays = useMemo(() => parseVideoOverlays(card.overlays), [card.overlays]);
+  const [box, setBox] = useState({ w: 0, h: 0 });
   // Mute follows the global, persisted preference — an unmute carries to the next card and
   // across sessions rather than resetting per card.
   const [muted, setMuted] = useState(getMuted());
@@ -112,6 +117,13 @@ function CardVideo({ card, isActive }: { card: DeckCard; isActive: boolean }) {
         nativeControls={false}
         pointerEvents="none"
       />
+      {/* Poster's text/stickers, drawn over the player at normalised positions. */}
+      <View
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+        onLayout={(e) => setBox({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
+        <VideoOverlays overlays={overlays} width={box.w} height={box.h} />
+      </View>
       {/* Mute is now a discrete button rather than a tap-anywhere target, so it no
           longer competes with double-tap-to-like or the card's other tap targets. */}
       <Pressable

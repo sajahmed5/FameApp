@@ -2,7 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { memo, useCallback, useEffect, useState } from 'react';
+
+import { VideoOverlays } from '@/components/video-overlays';
+import { parseVideoOverlays } from '@/lib/video-overlays';
+import { memo, useCallback, useEffect, useState, useMemo } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -206,7 +209,7 @@ const FeedCard = memo(function FeedCard({
 
       {extras.length === 0 ? (
         card.media_type === 'video' ? (
-          <FeedVideo uri={card.media_url} />
+          <FeedVideo uri={card.media_url} overlays={card.overlays} />
         ) : (
           <Image
             source={{ uri: card.media_url }}
@@ -293,13 +296,20 @@ const FeedCard = memo(function FeedCard({
   );
 });
 
-function FeedVideo({ uri }: { uri: string }) {
+function FeedVideo({ uri, overlays }: { uri: string; overlays?: unknown }) {
+  const overlaysParsed = useMemo(() => parseVideoOverlays(overlays), [overlays]);
+  const [box, setBox] = useState({ w: 0, h: 0 });
   const player = useVideoPlayer(uri, (p) => {
     p.loop = true;
     p.muted = true;
     p.play();
   });
-  return <VideoView player={player} style={styles.media} contentFit="cover" nativeControls={false} />;
+  return (
+    <View onLayout={(e) => setBox({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
+      <VideoView player={player} style={styles.media} contentFit="cover" nativeControls={false} />
+      <VideoOverlays overlays={overlaysParsed} width={box.w} height={box.h} />
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({

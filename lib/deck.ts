@@ -24,6 +24,8 @@ export type DeckCard = {
   media_count?: number;
   /** Full ordered media (cover first) — only set when this is a carousel. */
   carousel?: { media_url: string; media_type: 'image' | 'video' }[];
+  /** Video text/sticker overlays (raw jsonb from the RPC); parse with parseVideoOverlays. */
+  overlays?: unknown;
 };
 
 export type SwipeDirection = 'left' | 'right';

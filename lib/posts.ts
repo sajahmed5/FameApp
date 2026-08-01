@@ -91,6 +91,8 @@ export type PostDetail = {
   user_id: string;
   /** The caller's own swipe on this post, so the viewer can show like/skip as a toggle. */
   my_direction: 'left' | 'right' | null;
+  /** Video text/sticker overlays (raw jsonb); parse with parseVideoOverlays. */
+  overlays: unknown;
 };
 
 /** Load a single post for the read-only viewer, with counts + tags. RLS hides ones you can't see. */
@@ -98,7 +100,7 @@ export async function getPostDetail(id: string): Promise<PostDetail | null> {
   const { data, error } = await supabase
     .from('posts')
     .select(
-      'id, media_url, media_type, caption, like_count, skip_count, comment_count, user_id, profiles!posts_user_id_fkey(handle, display_name), post_tags(tags(name))',
+      'id, media_url, media_type, caption, like_count, skip_count, comment_count, user_id, overlays, profiles!posts_user_id_fkey(handle, display_name), post_tags(tags(name))',
     )
     .eq('id', id)
     .maybeSingle();
@@ -151,6 +153,7 @@ export async function getPostDetail(id: string): Promise<PostDetail | null> {
     display_name: prof?.display_name ?? '',
     user_id: row.user_id,
     my_direction: myDirection,
+    overlays: (row as Record<string, unknown>).overlays ?? [],
   };
 }
 

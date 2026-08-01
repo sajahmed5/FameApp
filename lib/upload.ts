@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 
 import { SUPABASE_ANON_KEY, SUPABASE_URL, supabase } from '@/lib/supabase';
 import { findOrCreateTag } from '@/lib/tags';
+import type { VideoOverlay } from '@/lib/video-overlays';
 
 // The pipeline's in-edge decode budget (see media-pipeline config). Downscale images
 // past this before upload so full-res phone photos aren't rejected. Note: re-encoding
@@ -161,6 +162,8 @@ export type CreatePostInput = {
   locationCell?: string | null;
   // Tags the user confirmed, split by provenance. Names are raw; resolved here.
   tags: { name: string; source: 'user' | 'vision' | 'geo' }[];
+  /** Video overlays (normalised); stored as jsonb and drawn at playback. */
+  overlays?: VideoOverlay[];
 };
 
 /**
@@ -191,6 +194,7 @@ export async function createPost(input: CreatePostInput): Promise<string> {
       location_cell: input.attachLocation
         ? (input.locationCell ?? result.suggestions.location_cell ?? null)
         : null,
+      overlays: input.overlays ?? [],
     })
     .select('id')
     .single();

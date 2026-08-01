@@ -9,6 +9,7 @@ import {
 } from 'react';
 
 import { trackFirst } from '@/lib/analytics';
+import type { VideoOverlay } from '@/lib/video-overlays';
 import { useAuth } from '@/lib/auth-context';
 import { dismissCameraCoach } from '@/lib/coach-marks';
 import {
@@ -42,6 +43,9 @@ export type Composition = {
   media: PickedMedia;
   /** Carousel extras (items 2..5); empty for a single-media post. */
   extras: PickedMedia[];
+  /** Video text/sticker overlays from the editor, drawn at playback (empty for photos,
+   *  whose overlays are burned into the exported image). */
+  overlays: VideoOverlay[];
   progress: number; // 0..1 across ALL items
   phase: PipelinePhase;
   result: PipelineResult | null;
@@ -58,7 +62,7 @@ export type Composition = {
 type UploadContextValue = {
   composition: Composition | null;
   /** Start a new composition from picked/captured media (+ optional carousel extras). */
-  begin: (media: PickedMedia, defaults: { visibility: 'public' | 'private' }, extras?: PickedMedia[]) => void;
+  begin: (media: PickedMedia, defaults: { visibility: 'public' | 'private' }, extras?: PickedMedia[], overlays?: VideoOverlay[]) => void;
   updateDraft: (patch: Partial<Draft>) => void;
   /** Retry a failed upload — keeps the draft (no re-entering caption/tags). */
   retryUpload: () => void;
@@ -102,6 +106,7 @@ export function UploadManagerProvider({ children }: { children: ReactNode }) {
         attachLocation: c.draft.attachLocation,
         locationCell: c.draft.locationCell,
         tags: c.draft.tags,
+        overlays: c.overlays,
       });
       if (user?.id) void trackFirst(user.id, 'first_post'); // milestone only, no post id/media
       void dismissCameraCoach(); // first post made → the camera nudge is no longer needed
@@ -173,12 +178,13 @@ export function UploadManagerProvider({ children }: { children: ReactNode }) {
   );
 
   const begin = useCallback(
-    (media: PickedMedia, defaults: { visibility: 'public' | 'private' }, extras: PickedMedia[] = []) => {
+    (media: PickedMedia, defaults: { visibility: 'public' | 'private' }, extras: PickedMedia[] = [], overlays: VideoOverlay[] = []) => {
       abortRef.current?.();
       const comp: Composition = {
         id: nextId(),
         media,
         extras: extras.slice(0, 4), // cover + up to 4 extras = 5 items max
+        overlays: overlays.slice(0, 20),
         progress: 0,
         phase: 'uploading',
         result: null,

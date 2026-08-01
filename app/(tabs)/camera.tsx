@@ -61,11 +61,24 @@ export default function CameraScreen() {
 
   const startNewComposition = useCallback(
     (media: PickedMedia) => {
-      // Images go through the shared editor first (filters/text/stickers/draw), which
-      // burns edits in and then continues to the post or story flow. Video bypasses the
-      // editor — burning overlays into every frame is out of scope for this path.
-      // On web the editor (Skia/CanvasKit) isn't wired up, so images skip straight to the
-      // post/story flow; capture + upload still work, just without in-app editing.
+      // Everything goes through the shared editor first on native. Images burn their
+      // edits into the export; POST videos keep text/stickers as data drawn at playback
+      // (filters/draw stay photo-only — those need a re-encode). Story videos keep their
+      // own lightweight overlay in /story/create. On web the editor (Skia/CanvasKit)
+      // isn't wired up, so everything skips straight through.
+      if (media.type === 'video' && target === 'post' && Platform.OS !== 'web') {
+        router.push({
+          pathname: '/edit',
+          params: {
+            uri: media.uri,
+            target,
+            type: 'video',
+            ...(media.width != null ? { w: String(media.width) } : {}),
+            ...(media.height != null ? { h: String(media.height) } : {}),
+          },
+        });
+        return;
+      }
       if (media.type === 'image' && Platform.OS !== 'web') {
         router.push({
           pathname: '/edit',

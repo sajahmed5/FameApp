@@ -23,6 +23,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BRAND } from '@/constants/config';
@@ -42,6 +43,7 @@ import {
 import { useEditorHistory } from '@/components/media-editor/use-editor-history';
 import { ThemedText } from '@/components/themed-text';
 import { exportEditedImage, type ExportedMedia } from '@/lib/media-editor';
+import { toVideoOverlays, type VideoOverlay } from '@/lib/video-overlays';
 
 type Tool = 'filter' | 'text' | 'sticker' | 'draw';
 
@@ -102,20 +104,37 @@ function toPath(points: { x: number; y: number }[]) {
  */
 export function MediaEditor({
   uri,
+  mediaType = 'image',
+  mediaAspect,
   onDone,
+  onDoneVideo,
   onCancel,
 }: {
   uri: string;
+  /** Video renders a looping muted player under the overlays instead of a Skia image. */
+  mediaType?: 'image' | 'video';
+  /** width/height of the video, for canvas sizing (falls back to 9:16). */
+  mediaAspect?: number;
   onDone: (media: ExportedMedia) => void;
+  /** Video path: overlays as normalised data — nothing is burned in. */
+  onDoneVideo?: (overlays: VideoOverlay[]) => void;
   onCancel: () => void;
 }) {
   const insets = useSafeAreaInsets();
   const { width: winW, height: winH } = useWindowDimensions();
-  const image = useImage(uri);
+  const isVideo = mediaType === 'video';
+  const image = useImage(isVideo ? null : uri);
+  // Muted looping preview. Only created for video (hook is cheap when source is null).
+  const player = useVideoPlayer(isVideo ? uri : null, (p) => {
+    p.loop = true;
+    p.muted = true;
+    p.play();
+  });
   const captureRef = useRef<View>(null);
 
   const { doc, update, undo, redo, canUndo, canRedo } = useEditorHistory(EMPTY_DOC);
-  const [tool, setTool] = useState<Tool>('filter');
+  // Filters and drawing need a re-encode to survive on video, so they're photo-only.
+  const [tool, setTool] = useState<Tool>(isVideo ? 'text' : 'filter');
   const [selected, setSelected] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
 
@@ -138,10 +157,10 @@ export function MediaEditor({
   const areaW = winW;
   const areaH = Math.max(200, winH - topH - bottomH);
   const { cw, ch } = useMemo(() => {
-    const aspect = image ? image.width() / image.height() : 1;
+    const aspect = isVideo ? (mediaAspect || 9 / 16) : image ? image.width() / image.height() : 1;
     if (areaW / areaH > aspect) return { cw: areaH * aspect, ch: areaH };
     return { cw: areaW, ch: areaW / aspect };
-  }, [image, areaW, areaH]);
+  }, [isVideo, mediaAspect, image, areaW, areaH]);
 
   const filterMatrix = filterById(doc.filterId).matrix;
 
@@ -251,6 +270,11 @@ export function MediaEditor({
   );
 
   const onDonePress = useCallback(() => {
+    if (isVideo) {
+      // Nothing to flatten: the overlays ARE the output, normalised to the media.
+      onDoneVideo?.(toVideoOverlays(doc.layers, cw, ch));
+      return;
+    }
     setSelected(null);
     setExporting(true);
     // Give React a frame to drop selection chrome before the snapshot.
@@ -263,7 +287,7 @@ export function MediaEditor({
         Alert.alert('Export failed', 'Could not apply your edits. Try again.');
       }
     }, 60);
-  }, [onDone]);
+  }, [isVideo, onDoneVideo, doc.layers, cw, ch, onDone]);
 
   return (
     <View style={styles.root}>
@@ -291,13 +315,21 @@ export function MediaEditor({
 
       {/* Canvas area */}
       <View style={styles.canvasArea}>
-        {!image ? (
+        {!image && !isVideo ? (
           <ActivityIndicator color="#fff" />
         ) : (
           <View
             ref={captureRef}
             collapsable={false}
             style={{ width: cw, height: ch, overflow: 'hidden' }}>
+            {isVideo ? (
+              <VideoView
+                player={player}
+                style={{ width: cw, height: ch }}
+                contentFit="cover"
+                nativeControls={false}
+              />
+            ) : (
             <Canvas style={{ width: cw, height: ch }}>
               <Group>
                 <SkiaImage image={image} x={0} y={0} width={cw} height={ch} fit="cover">
@@ -326,6 +358,7 @@ export function MediaEditor({
                 ) : null}
               </Group>
             </Canvas>
+            )}
 
             {/* Tap empty canvas to deselect. Must sit UNDER the overlays — as a sibling
                 painted after them it would swallow their pan/pinch/rotate and badges. */}
@@ -414,10 +447,16 @@ export function MediaEditor({
 
           {/* Tool tabs */}
           <View style={styles.tabs}>
-            <ToolTab icon="color-filter-outline" label="Filters" active={tool === 'filter'} onPress={() => setTool('filter')} />
+            {/* Filters and Draw are burn-in effects, which video can't do without a
+                re-encode — so video gets Text and Sticker only. */}
+            {!isVideo ? (
+              <ToolTab icon="color-filter-outline" label="Filters" active={tool === 'filter'} onPress={() => setTool('filter')} />
+            ) : null}
             <ToolTab icon="text-outline" label="Text" active={tool === 'text'} onPress={() => setTool('text')} />
             <ToolTab icon="happy-outline" label="Sticker" active={tool === 'sticker'} onPress={() => setTool('sticker')} />
-            <ToolTab icon="brush-outline" label="Draw" active={tool === 'draw'} onPress={() => setTool('draw')} />
+            {!isVideo ? (
+              <ToolTab icon="brush-outline" label="Draw" active={tool === 'draw'} onPress={() => setTool('draw')} />
+            ) : null}
           </View>
         </View>
       ) : null}

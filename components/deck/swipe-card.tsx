@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Canvas, LinearGradient, Rect, vec } from '@shopify/react-native-skia';
 import { Image } from 'expo-image';
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -40,6 +41,7 @@ export const SwipeCard = memo(function SwipeCard({
   onUndo?: () => void;
 }) {
   const insets = useSafeAreaInsets();
+  const [scrimBox, setScrimBox] = useState({ w: 0, h: 0 });
   // Carousel: swap in the current page's media. Left/right swipe still acts on the whole
   // post (skip/like) — a single tap advances (wired in the deck's gesture composition).
   const shots = card.carousel;
@@ -108,7 +110,21 @@ export const SwipeCard = memo(function SwipeCard({
           interactive children (avatar, handle, tags) still receive their taps. */}
       <View
         style={[styles.bottomScrim, { paddingBottom: insets.bottom + TAB_BAR_CLEARANCE }]}
-        pointerEvents="box-none">
+        pointerEvents="box-none"
+        onLayout={(e) => setScrimBox({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
+        {/* Slim, soft fade instead of the old solid band (#23): a Skia gradient (no new
+            native module) that only darkens the strip behind the text lines, so the
+            media loses far less to the overlay. */}
+        <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
+          <Rect x={0} y={0} width={scrimBox.w} height={scrimBox.h}>
+            <LinearGradient
+              start={vec(0, 0)}
+              end={vec(0, scrimBox.h)}
+              colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.28)', 'rgba(0,0,0,0.55)']}
+              positions={[0, 0.45, 1]}
+            />
+          </Rect>
+        </Canvas>
         {shots ? (
           <View style={styles.dots} pointerEvents="none">
             {shots.map((_, i) => (
@@ -260,9 +276,8 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     padding: 18,
-    paddingTop: 40,
+    paddingTop: 24,
     gap: 8,
-    backgroundColor: 'rgba(0,0,0,0.35)',
   },
   posterRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)' },
@@ -272,5 +287,5 @@ const styles = StyleSheet.create({
   onMedia: { color: '#fff', ...textShadow },
   onMediaDim: { color: 'rgba(255,255,255,0.85)' },
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 10, rowGap: 4 },
-  tag: { color: '#cfe0ff' },
+  tag: { color: '#FF9D2E', ...textShadow },
 });

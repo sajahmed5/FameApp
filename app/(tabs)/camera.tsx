@@ -2,8 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, AppState, Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -41,6 +42,23 @@ export default function CameraScreen() {
   const [recProgress, setRecProgress] = useState(0); // 0..1 of the 60s cap
   const recTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const recStart = useRef<number>(0);
+
+  // Pinch-to-zoom (#24, #25). CameraView's zoom is 0..1; we cap at 0.5 because the top
+  // half of the range is unusably shaky digital zoom on most devices. JS-thread gesture
+  // on purpose — this file's editor cousins crashed twice on UI-thread worklets.
+  const [zoom, setZoom] = useState(0);
+  const [zoomStart, setZoomStart] = useState(0);
+  const pinchZoom = useMemo(
+    () =>
+      Gesture.Pinch()
+        .runOnJS(true)
+        .onBegin(() => setZoomStart(zoom))
+        .onUpdate((e) => {
+          // scale 1→~3 maps to +0..+0.5 of zoom range; pinching in reverses it.
+          setZoom(Math.max(0, Math.min(0.5, zoomStart + (e.scale - 1) * 0.25)));
+        }),
+    [zoom, zoomStart],
+  );
 
   // The camera preview goes black after the app is backgrounded (or the tab is left) unless
   // CameraView is remounted. Mount it only while the screen is focused AND the app is in the
@@ -232,13 +250,25 @@ export default function CameraScreen() {
   return (
     <View style={styles.container}>
       {cameraLive ? (
-        <CameraView
-          ref={cameraRef}
-          style={StyleSheet.absoluteFill}
-          facing={facing}
-          flash={flash}
-          mode={mode}
-        />
+        <GestureDetector gesture={pinchZoom}>
+          <View style={StyleSheet.absoluteFill}>
+            <CameraView
+              ref={cameraRef}
+              style={StyleSheet.absoluteFill}
+              facing={facing}
+              flash={flash}
+              mode={mode}
+              zoom={zoom}
+            />
+            {zoom > 0.005 ? (
+              <View style={[styles.zoomPill, { top: insets.top + 64 }]} pointerEvents="none">
+                <ThemedText type="small" style={{ color: '#fff', fontWeight: '700' }}>
+                  {(1 + zoom * 4).toFixed(1)}x
+                </ThemedText>
+              </View>
+            ) : null}
+          </View>
+        </GestureDetector>
       ) : (
         <View style={[StyleSheet.absoluteFill, { backgroundColor: '#000' }]} />
       )}
@@ -476,6 +506,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
+  },
+  zoomPill: {
+    position: 'absolute',
+    alignSelf: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
   },
   topSide: { flex: 1, flexDirection: 'row', alignItems: 'flex-start' },
   topRight: { flex: 1, flexDirection: 'row', gap: 8, justifyContent: 'flex-end' },

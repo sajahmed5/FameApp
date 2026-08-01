@@ -28,7 +28,14 @@ export function PostAnalyticsCard({ postId }: { postId: string }) {
 
   return (
     <View style={[styles.card, { borderColor: theme.border }]}>
-      <ThemedText type="smallBold">Post analytics</ThemedText>
+      <View style={styles.titleRow}>
+        <ThemedText type="smallBold">Analytics</ThemedText>
+        {status === 'ready' && data && !data.sample_suppressed ? (
+          <ThemedText type="small" themeColor="textSecondary">
+            {Math.round((data.like_rate ?? 0) * 100)}% liked · {Math.round((data.skip_rate ?? 0) * 100)}% skipped
+          </ThemedText>
+        ) : null}
+      </View>
       {status === 'loading' ? (
         <ActivityIndicator color={theme.textSecondary} style={styles.pad} />
       ) : status === 'error' || !data ? (
@@ -46,14 +53,9 @@ export function PostAnalyticsCard({ postId }: { postId: string }) {
           </View>
           {data.sample_suppressed ? (
             <ThemedText type="small" themeColor="textSecondary">
-              Like/skip rates appear once this post has a few more swipes.
+              Rates appear after a few more swipes.
             </ThemedText>
-          ) : (
-            <ThemedText type="small" themeColor="textSecondary">
-              {Math.round((data.like_rate ?? 0) * 100)}% liked ·{' '}
-              {Math.round((data.skip_rate ?? 0) * 100)}% skipped
-            </ThemedText>
-          )}
+          ) : null}
         </>
       )}
     </View>
@@ -72,7 +74,9 @@ function Metric({ label, value }: { label: string; value: number }) {
 }
 
 const styles = StyleSheet.create({
-  card: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, padding: 14, gap: 10 },
+  // Compact (#27): one tight strip, not a panel — it sits between caption and comments.
+  card: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, gap: 6 },
+  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
   pad: { paddingVertical: 8 },
   row: { flexDirection: 'row', justifyContent: 'space-between' },
   metric: { alignItems: 'center', gap: 2, flex: 1 },

@@ -2,8 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 
 import { CollectionPicker } from '@/components/collection-picker';
 import { CommentSheet } from '@/components/comments/comment-sheet';
@@ -77,8 +78,49 @@ export default function PostViewScreen() {
     [siblings, siblingIndex, router],
   );
 
+  // #26: swipe right-to-left → next of your own posts. JS-thread pan (house rule);
+  // horizontal-only activation so the vertical scroll and the carousel keep working.
+  const canBrowse = siblings.length > 1 && siblingIndex >= 0;
+  const browsePan = useMemo(
+    () =>
+      Gesture.Pan()
+        .runOnJS(true)
+        .activeOffsetX([-24, 24])
+        .failOffsetY([-12, 12])
+        .onEnd((e) => {
+          if (!canBrowse) return;
+          if (e.translationX < -60) goToSibling(1);
+          else if (e.translationX > 60) goToSibling(-1);
+        }),
+    [canBrowse, goToSibling],
+  );
+
+  // Carousel wins until its end: the inner pager owns horizontal drags over the media,
+  // but overscrolling past the last page (or before the first) hands off to the next /
+  // previous post. The ref stops one iOS bounce firing it several times.
+  const handedOff = useRef(false);
+  const onCarouselScroll = useCallback(
+    (x: number, pages: number) => {
+      setPage(Math.max(0, Math.min(pages - 1, Math.round(x / pageW))));
+      if (!canBrowse || handedOff.current) return;
+      if (x > pageW * (pages - 1) + 48) {
+        handedOff.current = true;
+        goToSibling(1);
+      } else if (x < -48) {
+        handedOff.current = true;
+        goToSibling(-1);
+      }
+    },
+    [canBrowse, pageW, goToSibling],
+  );
+
   const load = useCallback(async () => {
     if (!id) return;
+    // Swiping between posts replaces the route param on the SAME screen instance, so
+    // per-post state must reset by hand or it leaks into the next post.
+    handedOff.current = false;
+    setPage(0);
+    setExtras([]);
     setStatus('loading');
     try {
       const data = await getPostDetail(id);
@@ -198,6 +240,7 @@ export default function PostViewScreen() {
           ),
         }}
       />
+      <GestureDetector gesture={browsePan}>
       <ScrollView contentContainerStyle={styles.content}>
         {extras.length === 0 ? (
           post.media_type === 'video' ? (
@@ -212,7 +255,7 @@ export default function PostViewScreen() {
               horizontal
               pagingEnabled
               showsHorizontalScrollIndicator={false}
-              onScroll={(e) => setPage(Math.round(e.nativeEvent.contentOffset.x / pageW))}
+              onScroll={(e) => onCarouselScroll(e.nativeEvent.contentOffset.x, extras.length + 1)}
               scrollEventThrottle={16}
               style={{ width: pageW, borderRadius: 16 }}>
               {[{ media_url: post.media_url, media_type: post.media_type }, ...extras].map((m, i) => (
@@ -291,6 +334,9 @@ export default function PostViewScreen() {
           </View>
         ) : null}
 
+        {/* Own posts: analytics directly under caption/tags, above comments (#27). */}
+        {isOwnPost ? <PostAnalyticsCard postId={post.id} /> : null}
+
         {preview.length > 0 ? (
           <View style={styles.previewWrap}>
             {preview.map((c) => (
@@ -316,33 +362,15 @@ export default function PostViewScreen() {
           </ThemedText>
         </Pressable>
 
-        {/* Your own post: the reach/like/skip breakdown was only reachable from the
-            edit screen, which is the last place you'd look for it (#18). */}
-        {isOwnPost ? <PostAnalyticsCard postId={post.id} /> : null}
-
-        {/* Step through your own posts without going back to the grid (#18). */}
+        {/* Swipe left/right anywhere on the post to move between your own posts (#26);
+            the counter is the only chrome left now the buttons are gone. */}
         {isOwnPost && siblings.length > 1 ? (
-          <View style={styles.siblingNav}>
-            <Button
-              title="Previous"
-              variant="secondary"
-              disabled={siblingIndex <= 0}
-              onPress={() => goToSibling(-1)}
-              style={styles.siblingBtn}
-            />
-            <ThemedText type="small" themeColor="textSecondary">
-              {siblingIndex + 1} of {siblings.length}
-            </ThemedText>
-            <Button
-              title="Next"
-              variant="secondary"
-              disabled={siblingIndex < 0 || siblingIndex >= siblings.length - 1}
-              onPress={() => goToSibling(1)}
-              style={styles.siblingBtn}
-            />
-          </View>
+          <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: 'center', marginTop: 10 }}>
+            {siblingIndex + 1} of {siblings.length} · swipe to browse
+          </ThemedText>
         ) : null}
       </ScrollView>
+      </GestureDetector>
 
       {commentsOpen ? (
         <CommentSheet

@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { DeckCard, FetchBatch } from '@/lib/deck';
 import { resolveDeckMedia } from '@/lib/media';
+import { getCurrentCoords } from '@/lib/location';
 import { supabase } from '@/lib/supabase';
 
 export type SearchMode = 'worldwide' | 'local' | 'tags' | 'accounts';
@@ -115,6 +116,30 @@ export async function getSearchSettings(): Promise<SearchSettings> {
   const row = ((data ?? [])[0] ?? { radius_miles: 5, center_label: null, has_actual_location: false }) as SearchSettings;
   return { radius_miles: Number(row.radius_miles ?? 5), center_label: row.center_label ?? null, has_actual_location: !!row.has_actual_location };
 }
+/**
+ * Point Local search at the device's real position (#30). Asks for the iOS location
+ * permission on first use; returns false when it's denied or unavailable, so the UI can
+ * fall back to "No location set" + a retry button.
+ *
+ * The coordinate is snapped to ~1 km (2 decimal places) BEFORE it leaves the device:
+ * profiles rows are readable by other signed-in users, radius search needs nothing
+ * finer, and the column is documented "fuzzed, never exact".
+ */
+export async function setSearchLocationFromDevice(): Promise<boolean> {
+  const coords = await getCurrentCoords();
+  if (!coords) return false;
+  const lat = Math.round(coords.lat * 100) / 100;
+  const lon = Math.round(coords.lon * 100) / 100;
+  const { data: u } = await supabase.auth.getUser();
+  if (!u.user) return false;
+  const { error } = await supabase
+    .from('profiles')
+    .update({ search_location: `POINT(${lon} ${lat})` })
+    .eq('id', u.user.id);
+  if (error) throw error;
+  return true;
+}
+
 export async function setSearchCenter(lat: number, lon: number, label: string): Promise<void> {
   const { error } = await supabase.rpc('set_search_center', { _lat: lat, _lon: lon, _label: label });
   if (error) throw error;

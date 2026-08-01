@@ -5,6 +5,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   StyleSheet,
   TextInput,
@@ -16,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/use-theme';
+import { notify } from '@/lib/confirm';
 import { fetchDiscover, type DeckCard } from '@/lib/deck';
 import { resolveDeckMedia } from '@/lib/media';
 import {
@@ -32,6 +35,7 @@ import {
   searchPosts,
   searchTags,
   setSearchCenter,
+  setSearchLocationFromDevice,
   setSearchRadius,
   trendingTags,
   unfollowAccount,
@@ -88,6 +92,28 @@ export default function SearchScreen() {
   useEffect(() => {
     if (mode === 'local' && !settings) void getSearchSettings().then(setSettings).catch(() => {});
   }, [mode, settings]);
+
+  // #30: opening Local points the search at where you actually are — iOS asks for
+  // permission the first time, then this refreshes silently on each visit. A denial
+  // just leaves "No location set" with the retry button below.
+  useEffect(() => {
+    if (mode !== 'local') return;
+    let alive = true;
+    void setSearchLocationFromDevice()
+      .then(async (ok) => {
+        if (ok && alive) setSettings(await getSearchSettings());
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [mode]);
+
+  const applyMyLocation = useCallback(async () => {
+    const ok = await setSearchLocationFromDevice().catch(() => false);
+    if (ok) setSettings(await getSearchSettings().catch(() => null));
+    else notify('Location permission needed', 'Allow location for Phixr in iOS Settings, then try again.');
+  }, []);
 
   const q = debounced;
   const empty = q.length === 0;
@@ -253,6 +279,7 @@ export default function SearchScreen() {
             setSettings((s) => (s ? { ...s, radius_miles: miles } : s));
             void runSearch();
           }}
+          onUseMine={() => void applyMyLocation().then(() => void runSearch())}
         />
       ) : null}
 
@@ -354,11 +381,13 @@ function RelocationBar({
   onOpen,
   onReset,
   onRadius,
+  onUseMine,
 }: {
   settings: SearchSettings | null;
   onOpen: () => void;
   onReset: () => void;
   onRadius: (miles: number) => void;
+  onUseMine: () => void;
 }) {
   const theme = useTheme();
   const relocated = !!settings?.center_label;
@@ -383,6 +412,14 @@ function RelocationBar({
           </Pressable>
         ) : null}
       </View>
+      {/* Only reachable when auto-capture failed (permission denied) — the retry path. */}
+      {!relocated && !settings?.has_actual_location ? (
+        <Pressable onPress={onUseMine} hitSlop={6} style={{ marginTop: 6 }}>
+          <ThemedText type="small" style={{ color: theme.tint, fontWeight: '700' }}>
+            Use current location
+          </ThemedText>
+        </Pressable>
+      ) : null}
       <View style={styles.radii}>
         {RADII.map((r) => {
           const active = settings?.radius_miles === r;
@@ -700,6 +737,9 @@ function PlaceSearchSheet({ onClose, onPick }: { onClose: () => void; onPick: (p
   return (
     <View style={styles.sheetOverlay}>
       <Pressable style={styles.sheetBackdrop} onPress={onClose} accessibilityLabel="Close" />
+      {/* #31: the input autofocuses, so without this the keyboard slid straight over
+          the bottom-anchored sheet and you typed blind. */}
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ThemedView style={[styles.sheet, { borderColor: theme.border }]}>
         <View style={styles.sheetHead}>
           <ThemedText type="subtitle">Search a place</ThemedText>
@@ -748,6 +788,7 @@ function PlaceSearchSheet({ onClose, onPick }: { onClose: () => void; onPick: (p
           />
         )}
       </ThemedView>
+      </KeyboardAvoidingView>
     </View>
   );
 }

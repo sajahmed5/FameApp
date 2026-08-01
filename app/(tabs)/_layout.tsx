@@ -13,6 +13,7 @@ import { TAB_BAR_FILL } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { useInboxBadge, useInboxBadgeUpdater } from '@/lib/inbox-badge';
+import { useNotifications } from '@/lib/notifications-provider';
 
 export default function TabsLayout() {
   const theme = useTheme();
@@ -20,6 +21,9 @@ export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   useInboxBadgeUpdater();
   const inboxBadge = useInboxBadge();
+  // #28: notifications live under Profile (the bell is in its header), so the tab
+  // mirrors the bell's actionable-only count.
+  const { unread } = useNotifications();
 
   return (
     <Tabs
@@ -120,6 +124,8 @@ export default function TabsLayout() {
         name="profile"
         options={{
           title: 'Profile',
+          tabBarBadge: unread > 0 ? (unread > 9 ? '9+' : unread) : undefined,
+          tabBarBadgeStyle: { backgroundColor: BRAND.accent, color: BRAND.onAccent, fontSize: 11 },
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? 'person' : 'person-outline'} size={size} color={color} />
           ),

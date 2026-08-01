@@ -54,8 +54,32 @@ export function scrubUser(user: Sentry.User | undefined): { id: string } | undef
   return id ? { id: String(id) } : undefined;
 }
 
-/** beforeSend: strip identifying context and redact PII everywhere in the event. */
+/**
+ * beforeSend: strip identifying context and redact PII everywhere in the event.
+ *
+ * Wrapped, because a throw in `beforeSend` makes Sentry DROP the event silently — which
+ * would lose exactly the crashes we care about most. Native crash payloads are a far
+ * stranger shape than a handled JS error (large debug_meta image lists, thread arrays,
+ * contexts this has never seen), and `scrub` walks all of it. If scrubbing fails, send a
+ * minimal event with the identifying parts removed rather than nothing at all.
+ */
 export function scrubEvent(event: Sentry.ErrorEvent): Sentry.ErrorEvent {
+  try {
+    return scrubEventUnsafe(event);
+  } catch {
+    return {
+      ...event,
+      user: scrubUser(event.user),
+      request: undefined,
+      breadcrumbs: undefined,
+      extra: { scrubFailed: true },
+      contexts: undefined,
+      server_name: undefined,
+    };
+  }
+}
+
+function scrubEventUnsafe(event: Sentry.ErrorEvent): Sentry.ErrorEvent {
   event.user = scrubUser(event.user);
   delete event.server_name;
   delete event.request; // headers/cookies/query can all carry tokens
@@ -76,8 +100,19 @@ export function scrubEvent(event: Sentry.ErrorEvent): Sentry.ErrorEvent {
   return event;
 }
 
-/** beforeBreadcrumb: redact URLs and route params; drop nothing structural. */
+/**
+ * beforeBreadcrumb: redact URLs and route params; drop nothing structural. Also wrapped —
+ * a throw here would drop the breadcrumb, and breadcrumbs are how a crash gets its story.
+ */
 export function scrubBreadcrumb(crumb: Sentry.Breadcrumb): Sentry.Breadcrumb | null {
+  try {
+    return scrubBreadcrumbUnsafe(crumb);
+  } catch {
+    return { timestamp: crumb.timestamp, category: crumb.category, level: crumb.level };
+  }
+}
+
+function scrubBreadcrumbUnsafe(crumb: Sentry.Breadcrumb): Sentry.Breadcrumb | null {
   if (crumb.message) crumb.message = redactString(crumb.message);
   if (crumb.data) {
     const data = { ...crumb.data } as Record<string, unknown>;

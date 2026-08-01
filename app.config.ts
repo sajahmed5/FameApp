@@ -44,9 +44,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     // Sentry-account-specific is committed.
     //
     // NOTE: leaving these unset does NOT skip the upload — the Gradle/Xcode hook still
-    // shells out to sentry-cli, which exits 1 and fails the whole native build. That is
-    // why every eas.json build profile sets SENTRY_DISABLE_AUTO_UPLOAD=true. Remove that
-    // once real Sentry credentials exist, to get readable (un-minified) stack traces.
+    // shells out to sentry-cli, which exits 1 and fails the whole native build.
+    //
+    // SENTRY_ORG / SENTRY_PROJECT / SENTRY_AUTH_TOKEN now exist as EAS environment
+    // variables (the token is `secret`, readable only on the builder), so preview and
+    // production upload source maps and report un-minified stack traces. The
+    // `development` profile still sets SENTRY_DISABLE_AUTO_UPLOAD=true: simulator builds
+    // don't need symbolication, and a local checkout has no token.
     [
       '@sentry/react-native/expo',
       {

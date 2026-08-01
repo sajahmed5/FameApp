@@ -22,6 +22,15 @@ const extra = (Constants.expoConfig?.extra ?? {}) as AppExtra;
 let started = false;
 
 /**
+ * Whether Sentry actually initialised. Distinguishes "no crashes yet" from "crash
+ * reporting was never on", which is not otherwise visible from the device — and we
+ * spent a night inferring a crash from native thread frames because of exactly that.
+ */
+export function sentryEnabled(): boolean {
+  return started;
+}
+
+/**
  * Initialise Sentry once. No-ops (crash reporting stays off) when no DSN is set, so the
  * app runs unchanged without a Sentry account. `dsnOverride` lets the payload
  * verification harness point at a local capture server.

@@ -36,7 +36,9 @@ import { ThemedView } from '@/components/themed-view';
 import { BRAND } from '@/constants/config';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
+import { notify } from '@/lib/confirm';
 import { MAX_ATTACHMENTS, submitFeedback, type FeedbackKind } from '@/lib/feedback';
+import { Sentry, sentryEnabled } from '@/lib/sentry';
 
 const KINDS: { key: FeedbackKind; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { key: 'bug', label: 'Something’s broken', icon: 'bug-outline' },
@@ -123,6 +125,16 @@ export function ReportFab({
         // No drag-vs-tap guard needed: once the pan responder claims the touch the
         // Pressable is cancelled, so a drag can't also fire a press.
         onPress={() => open(onBeforeOpen)}
+        // Long-press: prove whether this device can reach Sentry at all. "No crashes
+        // reported" and "crash reporting isn't running" look identical otherwise.
+        onLongPress={() => {
+          if (!sentryEnabled()) {
+            notify('Crash reporting is OFF', 'Sentry did not initialise — no DSN in this build.');
+            return;
+          }
+          Sentry.captureMessage('Phixr test event (long-press on the report button)', 'error');
+          notify('Test event sent', 'Check sentry.io — it should appear within a few seconds.');
+        }}
         accessibilityRole="button"
         accessibilityLabel="Report a problem with the app. Drag to move it out of the way."
         style={styles.fabHit}>

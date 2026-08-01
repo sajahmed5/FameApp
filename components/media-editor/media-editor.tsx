@@ -161,10 +161,21 @@ export function MediaEditor({
 
   const commitTransform = useCallback(
     (id: string, t: Transform) =>
-      update((d) => ({
-        ...d,
-        layers: d.layers.map((l) => (l.id === id ? { ...l, ...t } : l)),
-      })),
+      update((d) => {
+        const cur = d.layers.find((l) => l.id === id);
+        // Same values → return the doc unchanged, which useEditorHistory treats as a
+        // no-op. The three gestures all commit on end and usually agree.
+        if (
+          cur &&
+          cur.x === t.x &&
+          cur.y === t.y &&
+          cur.scale === t.scale &&
+          cur.rotation === t.rotation
+        ) {
+          return d;
+        }
+        return { ...d, layers: d.layers.map((l) => (l.id === id ? { ...l, ...t } : l)) };
+      }),
     [update],
   );
 

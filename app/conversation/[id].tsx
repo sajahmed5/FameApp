@@ -7,8 +7,6 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   StyleSheet,
   TextInput,
@@ -21,6 +19,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ActionMenu, type ActionOption } from '@/components/ui/action-menu';
 import { useTheme } from '@/hooks/use-theme';
+import { useKeyboardHeight } from '@/lib/use-keyboard-height';
 import { useAuth } from '@/lib/auth-context';
 import { confirm } from '@/lib/confirm';
 import { blockUser } from '@/lib/profile';
@@ -75,6 +74,7 @@ export default function ConversationScreen() {
   const { id: cid } = useLocalSearchParams<{ id: string }>();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const keyboard = useKeyboardHeight();
   const { user } = useAuth();
   const meId = user?.id;
 
@@ -284,7 +284,10 @@ export default function ConversationScreen() {
     <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
       <Header title={title} subtitle={detail?.type === 'group' ? `${detail.members.length} members` : `@${other?.handle ?? ''}`} onBack={() => router.back()} onMenu={() => setMenu(true)} onPressTitle={() => router.push({ pathname: '/conversation/details', params: { cid } })} theme={theme} />
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={insets.top + 44}>
+      {/* #35/#37: explicit keyboard-height padding instead of KeyboardAvoidingView.
+          KAV left its padding behind after dismissal ("it won't go lower"), and its
+          offset arithmetic added a visible dead gap above the keyboard while typing. */}
+      <View style={{ flex: 1, paddingBottom: keyboard }}>
         <FlatList
           data={combined}
           inverted
@@ -335,20 +338,20 @@ export default function ConversationScreen() {
             onCancelReply={() => setReply(null)}
             disabled={sending}
             hint={detail?.pending_outgoing ? 'Message request — they must accept before you can send more.' : null}
-            bottomInset={insets.bottom}
+            bottomInset={keyboard > 0 ? 8 : insets.bottom}
             theme={theme}
           />
         )}
-      </KeyboardAvoidingView>
+      </View>
 
       <ActionMenu visible={menu} options={menuOptions()} onClose={() => setMenu(false)} />
       <ActionMenu
         visible={!!msgMenu}
-        title={msgMenu ? `React:  ${QUICK_REACTIONS.join('   ')}` : undefined}
+        emojis={QUICK_REACTIONS}
+        onEmoji={(e) => msgMenu && void reactTo(msgMenu.id, e)}
         options={
           msgMenu
             ? [
-                ...QUICK_REACTIONS.map((e) => ({ label: `React ${e}`, onPress: () => void reactTo(msgMenu.id, e) })),
                 { label: 'Reply', onPress: () => setReply(msgMenu) },
                 ...(msgMenu.sender_id === meId && !msgMenu.deleted_at
                   ? [{ label: 'Delete', destructive: true, onPress: async () => { if (!(await confirm('Delete message?', 'This removes it for everyone.', 'Delete'))) return; await deleteMessage(msgMenu.id); void refresh(); } }]

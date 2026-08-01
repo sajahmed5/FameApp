@@ -20,6 +20,8 @@ export type DeckEmptyContext = {
 };
 
 type DeckViewProps = {
+  /** False on root-stack decks (tag/search seeded) — there is no floating tab bar there. */
+  hasTabBar?: boolean;
   /** The candidate-pool fetcher — this is the only thing that differs between feeds. */
   fetchBatch: FetchBatch;
   /** Optional content pinned above the deck (e.g. the Following stories rail). */
@@ -38,7 +40,7 @@ type DeckViewProps = {
  * state machine. The two tabs differ only by the `fetchBatch` they pass and the optional
  * `header` / `renderEmpty` slots — there is a single deck implementation.
  */
-export function DeckView({ fetchBatch, header, renderEmpty }: DeckViewProps) {
+export function DeckView({ fetchBatch, header, renderEmpty, hasTabBar = true }: DeckViewProps) {
   const { cards, status, canUndo, pendingWrites, swipe, undo, retry, adjustCommentCount } =
     useDeck(fetchBatch);
   const insets = useSafeAreaInsets();
@@ -66,6 +68,7 @@ export function DeckView({ fetchBatch, header, renderEmpty }: DeckViewProps) {
     body = (
       <View style={styles.deckArea}>
         <SwipeDeck
+          hasTabBar={hasTabBar}
           cards={cards}
           onSwipe={swipe}
           onShare={onShare}

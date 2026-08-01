@@ -43,7 +43,7 @@ export default function SearchDeckScreen() {
           {title}
         </ThemedText>
       </View>
-      <DeckView fetchBatch={fetcher} />
+      <DeckView fetchBatch={fetcher} hasTabBar={false} />
     </View>
   );
 }

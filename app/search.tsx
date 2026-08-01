@@ -25,6 +25,7 @@ import {
   ACCOUNTS_PAGE,
   PAGE,
   addRecentSearch,
+  recommendedAccounts,
   clearRecentSearches,
   followAccount,
   geocodePlaces,
@@ -68,6 +69,7 @@ export default function SearchScreen() {
   const [related, setRelated] = useState<AccountHit[]>([]); // "related accounts" above worldwide grid
   const [tags, setTags] = useState<TagHit[]>([]);
   const [recents, setRecents] = useState<RecentSearch[]>([]);
+  const [recommended, setRecommended] = useState<AccountHit[]>([]);
   const [settings, setSettings] = useState<SearchSettings | null>(null);
 
   const [loading, setLoading] = useState(false);
@@ -108,6 +110,12 @@ export default function SearchScreen() {
       alive = false;
     };
   }, [mode]);
+
+  // #34: the empty Accounts tab shows people ranked by your liked tags.
+  useEffect(() => {
+    if (mode !== 'accounts' || recommended.length > 0) return;
+    void recommendedAccounts(10).then(setRecommended).catch(() => {});
+  }, [mode, recommended.length]);
 
   const applyMyLocation = useCallback(async () => {
     const ok = await setSearchLocationFromDevice().catch(() => false);
@@ -313,6 +321,7 @@ export default function SearchScreen() {
         <AccountsList
           data={accounts}
           empty={empty}
+          recommended={recommended}
           onEndReached={loadMore}
           loadingMore={loadingMore}
           bottomInset={insets.bottom}
@@ -484,6 +493,7 @@ function RecentList({
 function AccountsList({
   data,
   empty,
+  recommended,
   onOpen,
   onEndReached,
   loadingMore,
@@ -491,11 +501,27 @@ function AccountsList({
 }: {
   data: AccountHit[];
   empty: boolean;
+  recommended: AccountHit[];
   onOpen: (a: AccountHit) => void;
   onEndReached: () => void;
   loadingMore: boolean;
   bottomInset: number;
 }) {
+  if (empty && recommended.length > 0) {
+    return (
+      <FlatList
+        data={recommended}
+        keyExtractor={(a) => a.id}
+        ListHeaderComponent={
+          <ThemedText type="smallBold" themeColor="textSecondary" style={{ paddingHorizontal: 16, paddingVertical: 10 }}>
+            Recommended for you
+          </ThemedText>
+        }
+        contentContainerStyle={{ paddingBottom: bottomInset + 24 }}
+        renderItem={({ item }) => <AccountRow account={item} onOpen={onOpen} />}
+      />
+    );
+  }
   if (empty) return <EmptyState icon="people-outline" text="Search by handle or name." />;
   if (data.length === 0) return <EmptyState icon="sad-outline" text="No accounts match that." />;
   return (

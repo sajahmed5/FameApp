@@ -17,11 +17,17 @@ export function ActionMenu({
   title,
   options,
   onClose,
+  emojis,
+  onEmoji,
 }: {
   visible: boolean;
   title?: string;
   options: ActionOption[];
   onClose: () => void;
+  /** One horizontal row of quick reactions at the top (#36) — replaces listing each
+   *  emoji as its own full-width option row. */
+  emojis?: string[];
+  onEmoji?: (emoji: string) => void;
 }) {
   const theme = useTheme();
   useAndroidBack(visible, onClose); // hardware back dismisses the menu, not the screen
@@ -35,6 +41,23 @@ export function ActionMenu({
           <ThemedText type="small" themeColor="textSecondary" style={styles.title}>
             {title}
           </ThemedText>
+        ) : null}
+        {emojis && onEmoji ? (
+          <View style={styles.emojiRow}>
+            {emojis.map((e) => (
+              <Pressable
+                key={e}
+                accessibilityRole="button"
+                accessibilityLabel={`React ${e}`}
+                onPress={() => {
+                  onClose();
+                  onEmoji(e);
+                }}
+                style={({ pressed }) => [styles.emojiBtn, pressed && { backgroundColor: theme.backgroundElement }]}>
+                <ThemedText style={styles.emoji}>{e}</ThemedText>
+              </Pressable>
+            ))}
+          </View>
         ) : null}
         {options.map((o, i) => (
           <Pressable
@@ -97,6 +120,9 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
   },
   title: { textAlign: 'center', paddingVertical: 8 },
+  emojiRow: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 6 },
+  emojiBtn: { padding: 8, borderRadius: 12 },
+  emoji: { fontSize: 28, lineHeight: 34 },
   option: { paddingVertical: 16, alignItems: 'center' },
   cancel: { marginTop: 6, paddingVertical: 16, alignItems: 'center', borderRadius: 12 },
 });

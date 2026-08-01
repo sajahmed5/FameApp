@@ -28,6 +28,7 @@ const FLY_MS = 200;
 const HEART_HOLD_MS = 550; // how long the heart shows before the card flies off on a like
 
 type SwipeDeckProps = {
+  hasTabBar?: boolean;
   cards: DeckCard[];
   onSwipe: (direction: SwipeDirection) => void;
   onShare: (card: DeckCard) => void;
@@ -46,6 +47,7 @@ type SwipeDeckProps = {
  * path as a swipe-right. All per-frame work is in worklets on the UI thread.
  */
 export function SwipeDeck({
+  hasTabBar = true,
   cards,
   onSwipe,
   onShare,
@@ -75,6 +77,7 @@ export function SwipeDeck({
         <DeckCardView
           key={visible[1].id}
           card={visible[1]}
+          hasTabBar={hasTabBar}
           isTop={false}
           topProgress={topProgress}
           width={width}
@@ -92,6 +95,7 @@ export function SwipeDeck({
         <DeckCardView
           key={visible[0].id}
           card={visible[0]}
+          hasTabBar={hasTabBar}
           isTop
           topProgress={topProgress}
           width={width}
@@ -110,6 +114,7 @@ export function SwipeDeck({
 }
 
 type DeckCardViewProps = {
+  hasTabBar: boolean;
   card: DeckCard;
   isTop: boolean;
   topProgress: SharedValue<number>;
@@ -126,6 +131,7 @@ type DeckCardViewProps = {
 
 function DeckCardView({
   card,
+  hasTabBar,
   isTop,
   topProgress,
   width,
@@ -286,6 +292,7 @@ function DeckCardView({
   const content = (
     <Animated.View style={[styles.cardWrap, cardStyle]}>
       <SwipeCard
+        hasTabBar={hasTabBar}
         card={card}
         isActive={isTop}
         page={page}

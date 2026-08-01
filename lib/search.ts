@@ -60,6 +60,14 @@ export function makeSearchDeckFetcher(opts: { mode: SearchMode; q?: string; tag?
 }
 
 // ---- accounts --------------------------------------------------------------
+/** "Recommended for you" on the empty Accounts tab (#34): ranked by overlap between
+ *  the tags of posts you liked and the tags they post. Excludes people you follow. */
+export async function recommendedAccounts(limit = 10): Promise<AccountHit[]> {
+  const { data, error } = await supabase.rpc('recommended_accounts', { _limit: limit });
+  if (error) throw error;
+  return (data ?? []) as AccountHit[];
+}
+
 export async function searchAccounts(q: string, offset = 0, limit = ACCOUNTS_PAGE): Promise<AccountHit[]> {
   const { data, error } = await supabase.rpc('search_accounts', { _q: q, _limit: limit, _offset: offset });
   if (error) throw error;

@@ -24,6 +24,7 @@ export const SwipeCard = memo(function SwipeCard({
   onLike,
   onSkip,
   onOpenProfile,
+  hasTabBar = true,
   onOpenTag,
   canUndo,
   onUndo,
@@ -36,6 +37,9 @@ export const SwipeCard = memo(function SwipeCard({
   onLike?: () => void;
   onSkip?: () => void;
   onOpenProfile?: (handle: string) => void;
+  /** #32: the seeded /deck route has no floating tab bar — reserving clearance for one
+   *  stranded the caption block mid-screen there. */
+  hasTabBar?: boolean;
   onOpenTag?: (tag: string) => void;
   canUndo?: boolean;
   onUndo?: () => void;
@@ -109,7 +113,7 @@ export const SwipeCard = memo(function SwipeCard({
           itself passes touches through to the media (double-tap to like), while its
           interactive children (avatar, handle, tags) still receive their taps. */}
       <View
-        style={[styles.bottomScrim, { paddingBottom: insets.bottom + TAB_BAR_CLEARANCE }]}
+        style={[styles.bottomScrim, { paddingBottom: insets.bottom + (hasTabBar ? TAB_BAR_CLEARANCE : 10) }]}
         pointerEvents="box-none"
         onLayout={(e) => setScrimBox({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
         {/* Slim, soft fade instead of the old solid band (#23): a Skia gradient (no new

@@ -13,6 +13,7 @@
  */
 import * as Sentry from '@sentry/react-native';
 import Constants from 'expo-constants';
+import * as Updates from 'expo-updates';
 
 import { scrubBreadcrumb, scrubEvent } from '@/lib/sentry-scrub';
 import type { AppExtra } from '@/types';
@@ -48,6 +49,12 @@ export function initSentry(dsnOverride?: string): boolean {
     beforeSend: scrubEvent,
     beforeBreadcrumb: scrubBreadcrumb,
   });
+  // Which OTA bundle is actually running. The native build number alone can't tell a
+  // shipped fix from the bundle it replaced, and expo-updates applies an update on the
+  // launch AFTER it downloads — so "is this crash from before or after the fix?" was
+  // otherwise unanswerable.
+  Sentry.setTag('updateId', Updates.updateId ?? 'embedded');
+  Sentry.setTag('updateCreatedAt', Updates.createdAt?.toISOString() ?? 'embedded');
   started = true;
   return true;
 }

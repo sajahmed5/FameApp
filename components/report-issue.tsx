@@ -1,7 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Application from 'expo-application';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import * as Updates from 'expo-updates';
 import { usePathname } from 'expo-router';
 import {
   createContext,
@@ -51,6 +53,16 @@ const FAB_MARGIN = 10;
 const FAB_POS_KEY = 'phixr.reportFab.pos';
 
 type FabPos = { x: number; y: number };
+
+/**
+ * Native build number plus a short OTA update id. Shown in the sheet so a screenshot
+ * alone answers "which bundle was this?" — an update applies on the launch AFTER it
+ * downloads, so the build number on its own can't distinguish a shipped fix from the
+ * bundle it replaced.
+ */
+const BUILD_LABEL = `${Application.nativeBuildVersion ?? '?'}·${
+  Updates.updateId ? Updates.updateId.slice(0, 8) : 'embedded'
+}`;
 
 const ReportIssueContext = createContext<{
   open: (beforeOpen?: () => void) => void;
@@ -323,7 +335,7 @@ export function ReportIssueProvider({ children }: { children: ReactNode }) {
               <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 460 }}>
                 <ThemedText type="subtitle">Report an issue</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary" style={{ marginBottom: 12 }}>
-                  On {pathname || 'this screen'}
+                  On {pathname || 'this screen'} · build {BUILD_LABEL}
                 </ThemedText>
 
                 <View style={styles.kinds}>

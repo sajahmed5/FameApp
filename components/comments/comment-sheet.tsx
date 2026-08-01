@@ -19,7 +19,6 @@ import Animated, {
   Extrapolation,
   interpolate,
   runOnJS,
-  useAnimatedKeyboard,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -35,6 +34,7 @@ import { ActionMenu, type ActionOption } from '@/components/ui/action-menu';
 import { FormMessage } from '@/components/ui/form-message';
 import { confirm } from '@/lib/confirm';
 import { useAndroidBack } from '@/lib/use-android-back';
+import { useKeyboardHeight } from '@/lib/use-keyboard-height';
 import { useComments } from '@/lib/use-comments';
 import type { CommentView } from '@/lib/comments';
 import { useTheme } from '@/hooks/use-theme';
@@ -72,7 +72,11 @@ export function CommentSheet({
 
   // --- sheet animation -------------------------------------------------------
   const translateY = useSharedValue(sheetHeight);
-  const keyboard = useAnimatedKeyboard();
+  // Plain state, not useAnimatedKeyboard: this sheet lives inside a react-native
+  // <Modal> (its own native window), where the Reanimated keyboard hook doesn't track —
+  // the composer sat hidden BEHIND the keyboard, which is #9's "I can't see what I'm
+  // typing". Keyboard events fire fine in a Modal.
+  const keyboard = useKeyboardHeight();
 
   useEffect(() => {
     translateY.value = withTiming(0, { duration: 260 });
@@ -102,7 +106,6 @@ export function CommentSheet({
 
   const sheetStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
-    paddingBottom: Math.max(keyboard.height.value, insets.bottom),
   }));
   const backdropStyle = useAnimatedStyle(() => ({
     opacity: interpolate(translateY.value, [0, sheetHeight], [1, 0], Extrapolation.CLAMP),
@@ -206,6 +209,7 @@ export function CommentSheet({
         style={[
           styles.sheet,
           { height: sheetHeight, backgroundColor: theme.background },
+          { paddingBottom: Math.max(keyboard, insets.bottom) },
           sheetStyle,
         ]}>
         <GestureDetector gesture={drag}>
